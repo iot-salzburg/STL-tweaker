@@ -6,8 +6,6 @@ Author: Christoph Schranz, Salzburg Research Forschungsgesellschaft mbH
 
 Date: 	12.01.2016 
 
-Published: www.salzburgresearch.at 
-
 
 Install required modules: 
 

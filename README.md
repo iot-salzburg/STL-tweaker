@@ -29,18 +29,16 @@ pip install python-utils --upgrade
 pip install numpy-stl 
 
 
-
 Testing modules in command line:  
 
 stl2ascii <yourobject.slt>  
 
-More infos and licences for this package at https://github.com/WoLpH/numpy-stl  
-
+More infos: https://github.com/WoLpH/numpy-stl  
 
 
 Usage:  
 
 stl_tweaker.py must be executable.  
 
-<STL-tweaker.py> <yourobject.stl> [optional: <int(yourownangle)>]  
+path/STL-tweaker.py path/yourobject.stl optional: int(yourownangle)
 

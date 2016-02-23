@@ -1,10 +1,7 @@
 # STL-tweaker
-The STL-tweaker is a STL object positioning tool implemented as python module which finds an optimal orientation for a 3D object on the printing platform to improve the efficiency of the 3D-print. 
+##The STL-tweaker is a auto-rotate module which finds the STL object's optimal orientation in the printing platform to improve the efficiency of the 3D print.
 
-
-Author: Christoph Schranz, Salzburg Research 
-
-Date: 	12.01.2016 
+Author: Christoph Schranz, 12.01.2016 
 
 
 ## Installing required modules:

@@ -35,7 +35,7 @@ pip install numpy-stl
 
 ## Quickstart:  
 
-stl_tweaker.py must be executable.  
+FileHandler.py must be executable.  
 
-`path/STL-tweaker.py path/yourobject.stl [optional: int(yourownangle)]`
+`path/FileHandler.py path/yourobject [optional: int(yourownangle)]`
 

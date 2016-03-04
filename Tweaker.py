@@ -1,21 +1,23 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
 # Date: 3.3.2016
+# STL-tweaker version: 4.3.16
 
 ## Modules required:
-##  Linux: apt-get install python-pip
-##  Linux: pip install numpy
+##  Linux:  apt-get install python-pip
+##  Linux:  pip install numpy
 ##  Windows: https://pip.pypa.io/en/latest/installing/
 ##  Windows: pip install -i https://pypi.binstar.org/carlkl/simple numpy
 
 ## Usage:
 ##  Call the function Tweaker.Tweak(mesh_content).
 ##  Note the correct mesh format, which can be configured in arrange_mesh
-##  Call the methods v,phi,R, Zn or Unprintability. View the doc for more informations
+##  Call the methods v, phi, R, Zn or Unprintability. View the doc for more informations
 
 import math
 import numpy
 import logging
+import time
 logger = logging.getLogger()
 
 class Tweak:
@@ -27,6 +29,7 @@ class Tweak:
       [vnx,vny,vnz]]
     If you want to use the mesh format with inversed x and y coords, go to
     arrange_mesh() and replace "face[0], face[1]" by "-face[0], -face[1]".
+    Also note the orientation of the z-axis.
 
     The critical angle CA is a variable that can be set by the operator as
     it may depend on multiple factors such as material used, printing
@@ -40,9 +43,9 @@ class Tweak:
     vector with R.
     The vector of the new
     And the relative .Unprintability of the tweaked object. If this value is
-    greater than 15, a support structure is suggested.
-        """
-    def __init__(self, content, CA=45):
+    greater than 15, a support structure is suggested."""
+    
+    def __init__(self, content, CA=40):
         self.content=content
         self.CA=CA
         self.workflow(self.content, self.CA)
@@ -50,16 +53,15 @@ class Tweak:
     def workflow(self,content, CA):
         ABSLIMIT=80             # Some values to scale the printability
         RELLIMIT=1
-        n=[0,0,-1]              # default normal vector
+        n=[0,0,-1]              # default z vector
 
-        content=self.arrange_mesh(content)
-        
+        content=self.arrange_mesh(content)      
         logger.debug("CA=%i\n...calculating initial lithographs", CA)
-        amin=self.approachfirstvertex(content)
-        lit=self.lithograph(content,[0,0,1],amin,CA)
+        [content_an, amin] = self.approachfirstvertex(content)
+        lit=self.lithograph(content_an, [0,0,1], amin, CA)
         liste=[[[0,0,1],lit[0], lit[1]]]
         logger.info("vector: , groundA: , OverhangA: %s", liste[0])
-
+        
         if (liste[0][2]/ABSLIMIT)+(liste[0][2]/liste[0][1]/RELLIMIT)<1:
             logger.debug("The default orientation is alright!")
             bestside=liste[0]
@@ -69,40 +71,35 @@ class Tweak:
             logger.debug("...calculating orientations")
             o=self.orientation(content, n)
             logger.info("Orient: [[vector1, gesamtA1],...[vector5, gesamtA5]]:%s", o)
-            
             for side in o:
                 sn=[round(-i,6)+0 for i in side[0]]
                 logger.info("side: [vector: %s, gesamtA: %s]",sn, side[1])
-                amin=self.approachvertex(content, side[0])
+                [content_an, amin] = self.approachvertex(content, side[0])
                 logger.info("amin:", amin)
-                ret=self.lithograph(content, sn, amin, CA)
+                ret=self.lithograph(content_an, sn, amin, CA)
                 logger.info("Ground, Overhang: %s",ret)
                 liste.append([sn, ret[0], ret[1]])   #[Vector, touching area, Overhang]
-            
             logger.debug("...calculating best option")
             Unprintability=999999999
             for i in liste:
-                F=(i[2]/ABSLIMIT)+(i[2]/i[1]/RELLIMIT)  # target function
+                F=(i[2]/ABSLIMIT)+(i[2]/i[1]/RELLIMIT)  # target function, make it extern
                 logger.info("Side: %s / Unprintability %s",i,F)
                 if F<Unprintability-0.2:
                     Unprintability=F
                     bestside=i
                 if Unprintability<1:
-                    Unprintability=1
-                    
+                    Unprintability=1          
         logger.info("best side %s with Unprintability: %f", bestside, Unprintability)
-        
+        #print("best side %s with Unprintability: %f"% (bestside, Unprintability))
         if bestside:
             [v,phi,R] = self.euler(bestside)
-            logger.debug("Finished!")
-            
+            logger.debug("Finished!") 
         self.v=v
         self.phi=phi
         self.R=R
         self.Unprintability=Unprintability
         self.Zn=bestside
         return None
-
 
     def arrange_mesh(self,content):
         '''The Tweaker needs the content of the mesh object with the normals of the facetts.'''
@@ -118,35 +115,32 @@ class Tweak:
                 mesh[int(i/3-1)]=[[round(i,6) for i in [a[0],a[1],a[2]]],face[0],face[1],face[2]]
                 face=[]
         return mesh
-
-    
+  
     def approachfirstvertex(self,content):
         '''Returning the lowest z value'''
         amin=999999999
         for li in content:
             z=min([li[1][2],li[2][2],li[3][2]])
+            li.append(z)
             if z<amin:
                 amin=z
-        return amin
+        return [content, amin]
 
-
-    def approachvertex(self,content, n):    # Fixing performance issue 0.7s
+    def approachvertex(self,content, n):
         '''Returning the lowest value regarding vector n'''
         amin=999999999
         n=[-i for i in n]
-        #stime=time.time()
+        l=len(content[0])==3
+        norm=numpy.linalg.norm(n)
         for li in content:
-            a1=numpy.inner(li[1],n)/numpy.linalg.norm(n)
-            a2=numpy.inner(li[2],n)/numpy.linalg.norm(n)
-            a3=numpy.inner(li[3],n)/numpy.linalg.norm(n)              
+            a1=numpy.inner(li[1],n)/norm
+            a2=numpy.inner(li[2],n)/norm
+            a3=numpy.inner(li[3],n)/norm              
             an=min([a1,a2,a3])
+            li[4]=an
             if an<amin:
                 amin=an
-                
-        #endtime=time.time()
-        #print("approaching needed {} s.".format(endtime-stime))
-        return amin
-
+        return [content, amin]
 
     def lithograph(self,content,n,amin, CA):
         '''Calculating touching areas and overhangs regarding the vector n'''
@@ -157,13 +151,9 @@ class Tweak:
             a=numpy.array(li[0])
             norma=numpy.linalg.norm(a)
             if norma>2:      
-                if alpha > numpy.inner(a,n)/(norma*numpy.linalg.norm(n)):               
-                    a1=numpy.inner(li[1],n)/numpy.linalg.norm(n)
-                    a2=numpy.inner(li[2],n)/numpy.linalg.norm(n)
-                    a3=numpy.inner(li[3],n)/numpy.linalg.norm(n) 
-                    an=min([a1,a2,a3])
-                    ali=numpy.cross(numpy.subtract(li[1],li[2]),numpy.subtract(li[3],li[2]))/2
-                    ali=round(abs(numpy.inner(ali,n)),6)
+                if alpha > numpy.inner(a,n)/(norma):
+                    an=li[4]
+                    ali=round(abs(numpy.inner(li[0],n))/2,6)
                     if an>amin+0.3:
                         Overhang+=ali
                     else:
@@ -171,18 +161,18 @@ class Tweak:
         #print("\n\n[Grundfl, Overhang]:\n"+str([Grundfl, Overhang]))
         return [Grundfl, Overhang]
 
-
     def orientation(self,content,n):
-        '''Searching best options out of the objects area vector field'''
+        '''Searching best orientations in the objects area vector field'''
         orient=[]
-        for li in content:       #Calculate areavectors
+        for li in content:
             an=li[0]
             norma=round(numpy.linalg.norm(an),8)
             
             if norma!=0:
                 an=[round(i/norma+0, 5) for i in an]
                 if an!=n: 
-                    A=round(numpy.linalg.norm(numpy.cross(numpy.subtract(li[1],li[2]),numpy.subtract(li[3],li[2])))/2, 4)
+                    A=round(numpy.linalg.norm(numpy.cross(numpy.subtract(li[1],li[2]),
+                                                          numpy.subtract(li[3],li[2])))/2, 4)
                     if A>0.5: # Smaller areas don't worry 
                         orien=0
                         for i in orient:
@@ -208,7 +198,6 @@ class Tweak:
                     break
         #print("\nOrientation: \n" +str(o))
         return o
-
 
     def euler(self, bestside):
         '''Calculating euler params and rotational matrix'''

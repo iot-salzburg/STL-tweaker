@@ -1,11 +1,13 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research Forschungsgesellschaft mbH
 # Date: 12.01.2016
-# STL-tweaker version: 1.13
+# STL-tweaker version: 4.3.16
 
 ## Modules required:
-## Linux: apt-get install python-pip || Windows: https://pip.pypa.io/en/latest/installing/
-## Linux: pip install numpy          || Windows: pip install -i https://pypi.binstar.org/carlkl/simple numpy
+## Linux: apt-get install python-pip
+## Linux: pip install numpy
+## Windows: https://pip.pypa.io/en/latest/installing/
+## Windows: pip install -i https://pypi.binstar.org/carlkl/simple numpy
 ## pip install python-utils
 ## pip install python-utils --upgrade
 ## pip install numpy-stl
@@ -73,7 +75,7 @@ class FileHandler:
 
 
 if __name__ == "__main__":
-    stime=time.time()
+    #stime=time.time()
     le=len(sys.argv) 
     stlfile=str(sys.argv[1])
     size=os.stat(stlfile).st_size
@@ -91,12 +93,13 @@ if __name__ == "__main__":
         if f.split(".")[-1].lower() == "stl":
             name=f.split("/")[-1].split(".")[0]        
             logger.debug("...calculating the printability of a new object")        
-            ascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
+            fascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
             logger.debug("...generating ascii file")
-            os.system("stl2ascii %s %s" %(f,ascii)) # In case of troubles check the module infos at the top or https://github.com/WoLpH/numpy-stl if troubled       
-            original=open(ascii,"r").read()
+            os.system("stl2ascii %s %s" %(f,fascii)) # In case of troubles check the module infos at the top or https://github.com/WoLpH/numpy-stl if troubled       
+            #original=open(f,"r").read()
+            original=open(fascii,"r").read()
             os.system("%s %s" %({'Windows':'del','Linux':'rm'}.get(platform.system()),ascii))
-
+            
             logger.debug("...arranging original content")
             content=FileHandler.STLReader(original)
             
@@ -112,10 +115,10 @@ if __name__ == "__main__":
                 except (KeyboardInterrupt, SystemExit):
                     raise
 
-            print("\n\nv: "+str(x.v))
-            print("\n\nphi: "+str(x.phi))
-            print("\n\nR: "+str(x.R))
-            print("\n\nUnprintability: "+str(x.Unprintability)+"\n\n\n")
+            print("\nv: "+str(x.v))
+            print("\nphi: "+str(x.phi))
+            #print("\nR: "+str(x.R))
+            print("\nUnprintability: "+str(x.Unprintability))
             
             tweakedcontent=FileHandler.rotate(x.R, content, name)
             if x.Unprintability > 12:
@@ -127,9 +130,9 @@ if __name__ == "__main__":
             with open(tweaked,'w') as outfile:
                 outfile.write(tweakedcontent)
                 
-            endtime=time.time()
-            print("Tweaking took {} s.".format(endtime-stime))
-            print("\n\nSuccessfully Rotated!")
+##            endtime=time.time()
+##            print("Tweaking took {} s.".format(endtime-stime))
+            print("\nSuccessfully Rotated!")
            
     else:
         logger.warning("You have to load a STL file.")

@@ -28,7 +28,7 @@ pip install numpy-stl
 
 ## Testing modules in command line:  
 
-`stl2ascii <yourobject.slt> ` 
+`stl2ascii <yourobject.stl> ` 
 
 [More infos:](https://github.com/WoLpH/numpy-stl)  
 
@@ -37,5 +37,5 @@ pip install numpy-stl
 
 FileHandler.py must be executable.  
 
-`path/FileHandler.py path/yourobject [optional: int(yourownangle)]`
+`FileHandler.py yourobject.stl [optional: int(yourownangle)]`
 

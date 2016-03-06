@@ -1,9 +1,9 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research Forschungsgesellschaft mbH
 # Date: 12.01.2016
-# STL-tweaker version: 4.3.16
+# STL-tweaker version: 0603
 
-## Modules required:
+## Modules required (only for binary STLs)
 ## Linux: apt-get install python-pip
 ## Linux: pip install numpy
 ## Windows: https://pip.pypa.io/en/latest/installing/
@@ -18,16 +18,16 @@
 import sys
 import os
 import platform
-import numpy
 import time
 import logging
 logger = logging.getLogger()
 import Tweaker
 
+filetype='ascii'
 
 class FileHandler:
     def STLReader(original):
-        # Reading mesh data from raw ascii STL content"
+        '''Reading mesh data from ascii STL'''
         content=[]
         for li in original.split("vertex ")[1:]:
             li=li.split("\n")[0].split(" ")
@@ -40,6 +40,7 @@ class FileHandler:
 
 
     def rotate(R, content, name):
+        '''Rotate the object and save as ascii STL'''
         face=[]
         mesh=[]
         i=0
@@ -48,7 +49,9 @@ class FileHandler:
             i+=1
             if i%3==0:
                 mesh.append([])
-                a=numpy.cross(numpy.subtract(face[1],face[0]),numpy.subtract(face[2],face[0]))
+                v=[face[1][0]-face[0][0],face[1][1]-face[0][1],face[1][2]-face[0][2]]
+                w=[face[2][0]-face[0][0],face[2][1]-face[0][1],face[2][2]-face[0][2]]
+                a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
                 mesh[int(i/3-1)]=[[round(i,6) for i in [a[0],a[1],a[2]]],face[0],face[1],face[2]]
                 face=[]
         content=mesh
@@ -57,8 +60,15 @@ class FileHandler:
         tweaked = "solid %s" % name
         for li in content:
             for vert in range(len(li)-1):
-                li[vert + 1] = (li[vert + 1] * R).getA1()  # rotational matrix with array transformation
-            n = numpy.cross(numpy.subtract(li[1], li[2]), numpy.subtract(li[1], li[3]))
+                a=li[vert + 1]
+                # multiply vectors with rotational matrix R
+                li[vert + 1]=[a[0]*R[0][0]+a[1]*R[1][0]+a[2]*R[2][0],
+                              a[0]*R[0][1]+a[1]*R[1][1]+a[2]*R[2][1],
+                              a[0]*R[0][2]+a[1]*R[1][2]+a[2]*R[2][2]]
+            v=[li[1][0]-li[2][0], li[1][1]-li[2][1], li[1][2]-li[2][2]]
+            w=[li[1][0]-li[3][0], li[1][1]-li[3][1], li[1][2]-li[3][2]]
+            n=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
+
             tweaked += """\nfacet normal %f %f %f
     outer loop
     vertex %f %f %f
@@ -73,52 +83,46 @@ class FileHandler:
         return tweaked
 
 
-
 if __name__ == "__main__":
-    #stime=time.time()
-    le=len(sys.argv) 
-    stlfile=str(sys.argv[1])
-    size=os.stat(stlfile).st_size
-    fileSizeLimit=2000000   # if the file is bigger '(in bytes), tweaking would take some moments
-    if size<fileSizeLimit:
-        further='yes'
-    else:
-        print("The size of your object in bytes: %s" %size)
-        print("Your file is very huge. A tweak would last a while!")
-        further=raw_input("but surely you can do it! (yes/no) ")
-    if (further=='yes') & (le in [2,3]):
+    if len(sys.argv) in [2,3]:
         print("Finding the best orientation for your object")
         f=sys.argv[1]
         
         if f.split(".")[-1].lower() == "stl":
             name=f.split("/")[-1].split(".")[0]        
-            logger.debug("...calculating the printability of a new object")        
-            fascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
-            logger.debug("...generating ascii file")
-            os.system("stl2ascii %s %s" %(f,fascii)) # In case of troubles check the module infos at the top or https://github.com/WoLpH/numpy-stl if troubled       
-            #original=open(f,"r").read()
-            original=open(fascii,"r").read()
-            os.system("%s %s" %({'Windows':'del','Linux':'rm'}.get(platform.system()),ascii))
+            logger.debug("...calculating the printability of a new object")
             
+            if filetype=='ascii':
+                original=open(f,"r").read()
+            else:
+                # In case of troubles check the module infos at the top or
+                # https://github.com/WoLpH/numpy-stl
+                print("Reading binary STL")
+                fascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
+                logger.debug("...generating ascii file")
+                os.system("stl2ascii %s %s" %(f,fascii))        
+                original=open(fascii,"r").read()
+                os.system("%s %s" %({'Windows':'del','Linux':'rm'}.get(platform.system()),fascii))
+                
             logger.debug("...arranging original content")
             content=FileHandler.STLReader(original)
             
-            if le==3:
+            if len(sys.argv)==3:
                 CA=int(sys.argv[2])
                 try:
                     x=Tweaker.Tweak(content, CA) #[v,phi,R,F]
                 except (KeyboardInterrupt, SystemExit):
                     raise
-            elif le==2:
+            else:
                 try:
                     x=Tweaker.Tweak(content)          
                 except (KeyboardInterrupt, SystemExit):
                     raise
 
             print("\nv: "+str(x.v))
-            print("\nphi: "+str(x.phi))
-            #print("\nR: "+str(x.R))
-            print("\nUnprintability: "+str(x.Unprintability))
+            print("phi: "+str(x.phi))
+            #print("R: "+str(x.R))
+            print("Unprintability: "+str(x.Unprintability))
             
             tweakedcontent=FileHandler.rotate(x.R, content, name)
             if x.Unprintability > 12:
@@ -129,11 +133,8 @@ if __name__ == "__main__":
             tweaked=f.split(".")[0]+"_tweaked."+f.split(".")[1]
             with open(tweaked,'w') as outfile:
                 outfile.write(tweakedcontent)
-                
-##            endtime=time.time()
-##            print("Tweaking took {} s.".format(endtime-stime))
-            print("\nSuccessfully Rotated!")
-           
+
+            print("\nSuccessfully Rotated!")        
     else:
         logger.warning("You have to load a STL file.")
         print("""Your command should be of the form <FileHandler.py> 

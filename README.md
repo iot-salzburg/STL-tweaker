@@ -5,22 +5,24 @@ Author: Christoph Schranz, 12.01.2016
 
 
 ## Installing required modules:
+If your STL file is written in [ascii](https://de.wikipedia.org/wiki/STL-Schnittstelle#ASCII-Format), you can start tweaking!
 
-The STL-tweaker is fully implemented in python 2.7 
+Otherwise, you have to install the following packages:
 
-Linux: 	`apt-get install python-pip`
+Linux: 	
+```bash
+apt-get install python-pip
 
-Linux:	 `pip install numpy` 
+pip install numpy
+```
 
 Windows: [pip under windows](https://pip.pypa.io/en/latest/installing/)
 
-Windows: `pip install -i https://pypi.binstar.org/carlkl/simple numpy` 
+`pip install -i https://pypi.binstar.org/carlkl/simple numpy` 
 
 
 ```bash
 pip install python-utils 
-
-pip install python-utils --upgrade 
 
 pip install numpy-stl 
 ```

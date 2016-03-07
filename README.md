@@ -27,8 +27,7 @@ pip install python-utils
 pip install numpy-stl 
 ```
 
-
-## Testing modules in command line:  
+Testing module:
 
 `stl2ascii <yourobject.stl> ` 
 

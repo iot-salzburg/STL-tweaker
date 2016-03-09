@@ -1,11 +1,11 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
 # Date: 3.3.2016
-# STL-tweaker version: 6.3.16
+# STL-tweaker version: 9.3.16
 
 ## Usage:
 ##  Call the function Tweaker.Tweak(mesh_content).
-##  Note the proper mesh format, which can be configured in arrange_mesh
+##  Note the correct mesh format, which can be configured in arrange_mesh
 ##  Call the methods v,phi,R, Zn or Unprintability. View the doc for more informations
 
 import math
@@ -36,7 +36,7 @@ class Tweak:
     And the relative .Unprintability of the tweaked object. If this value is
     greater than 15, a support structure is suggested.
         """
-    def __init__(self, content, CA=40):
+    def __init__(self, content, CA=45):
         self.content=content
         self.CA=CA
         self.workflow(self.content, self.CA)
@@ -49,11 +49,11 @@ class Tweak:
         content=self.arrange_mesh(content)
         
         logger.debug("CA=%i\n...calculating initial lithographs", CA)
-        [content_an, amin] = self.approachfirstvertex(content)
-        lit=self.lithograph(content_an, [0,0,1], amin, CA)
+        amin=self.approachfirstvertex(content)
+        lit=self.lithograph(content,[0,0,1],amin,CA)
         liste=[[[0,0,1],lit[0], lit[1]]]
         logger.info("vector: , groundA: , OverhangA: %s", liste[0])
-        
+
         if (liste[0][2]/ABSLIMIT)+(liste[0][2]/liste[0][1]/RELLIMIT)<1:
             logger.debug("The default orientation is alright!")
             bestside=liste[0]
@@ -62,30 +62,34 @@ class Tweak:
             logger.debug("The default orientation is not perfect.")
             logger.debug("...calculating orientations")
             o=self.orientation(content, n)
-            logger.info("Orient: [[vector1, gesamtA1],...[vector5, gesamtA5]]:%s", o)
+            logger.info("Orient: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
+            
             for side in o:
                 sn=[round(-i,6)+0 for i in side[0]]
                 logger.info("side: [vector: %s, gesamtA: %s]",sn, side[1])
-                [content_an, amin] = self.approachvertex(content, side[0])
+                amin=self.approachvertex(content, side[0])
                 logger.info("amin:", amin)
-                ret=self.lithograph(content_an, sn, amin, CA)
+                ret=self.lithograph(content, sn, amin, CA)
                 logger.info("Ground, Overhang: %s",ret)
                 liste.append([sn, ret[0], ret[1]])   #[Vector, touching area, Overhang]
+            
             logger.debug("...calculating best option")
             Unprintability=999999999
             for i in liste:
-                F=(i[2]/ABSLIMIT)+(i[2]/i[1]/RELLIMIT)  # target function, make it extern
+                F=(i[2]/ABSLIMIT)+(i[2]/i[1]/RELLIMIT)  # target function
                 logger.info("Side: %s / Unprintability %s",i,F)
                 if F<Unprintability-0.2:
                     Unprintability=F
                     bestside=i
                 if Unprintability<1:
                     Unprintability=1
+                    
         logger.info("best side %s with Unprintability: %f", bestside, Unprintability)
-        #print("best side {} with Unprintability: {}".format(bestside, Unprintability))
+        
         if bestside:
             [v,phi,R] = self.euler(bestside)
             logger.debug("Finished!")
+            
         self.v=v
         self.phi=phi
         self.R=R
@@ -117,27 +121,25 @@ class Tweak:
         amin=999999999
         for li in content:
             z=min([li[1][2],li[2][2],li[3][2]])
-            li.append(z)
             if z<amin:
                 amin=z
-        return [content, amin]
+        return amin
 
 
     def approachvertex(self,content, n):
         '''Returning the lowest value regarding vector n'''
         amin=999999999
         n=[-i for i in n]
-        l=len(content[0])==3
-        norma=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
+        normn=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
         for li in content:
-            a1=(li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2])/norma
-            a2=(li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2])/norma
-            a3=(li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2])/norma
+            a1=(li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2])/normn
+            a2=(li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2])/normn
+            a3=(li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2])/normn           
             an=min([a1,a2,a3])
-            li[4]=an
             if an<amin:
                 amin=an
-        return [content, amin]
+        return amin
+
 
     def lithograph(self,content,n,amin, CA):
         '''Calculating touching areas and overhangs regarding the vector n'''
@@ -147,27 +149,31 @@ class Tweak:
         for li in content:
             a=li[0]
             norma=math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
+            normn=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
             if norma>2:      
-                if alpha > (a[0]*n[0] +a[1]*n[1] +a[2]*n[2])/(norma):
-                    an=li[4]
+                if alpha > (a[0]*n[0] +a[1]*n[1] +a[2]*n[2])/(norma*normn):
+                    a1=(li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2])/normn
+                    a2=(li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2])/normn
+                    a3=(li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2])/normn 
+                    an=min([a1,a2,a3])
+
                     ali=round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2,6)
                     if an>amin+0.3:
                         Overhang+=ali
                     else:
                         Grundfl+=ali
-        #print("\n\n[Grundfl, Overhang]:\n"+str([Grundfl, Overhang]))
         return [Grundfl, Overhang]
 
 
     def orientation(self,content,n):
-        '''Searching best orientations in the objects area vector field'''
+        '''Searching best options out of the objects area vector field'''
         orient=[]
-        for li in content:
+        for li in content:       #Calculate areavectors
             an=li[0]
             norma=round(math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2]),8)
             
             if norma!=0:
-                an=[round(i/norma+0, 3) for i in an]
+                an=[round(i/norma+0, 5) for i in an]
                 if an!=n:
                     v=[li[2][0]-li[1][0], li[2][1]-li[1][1], li[2][2]-li[1][2]]
                     w=[li[2][0]-li[3][0], li[2][1]-li[3][1], li[2][2]-li[3][2]]
@@ -212,10 +218,8 @@ class Tweak:
             phi = math.pi - math.acos( -bestside[0][2] )
             v = [round(i, 5) + 0 for i in   [-bestside[0][1] , bestside[0][0], 0]]
             v = [i / math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) for i in v]
-
         logger.info("v: %s", v)
-        logger.info("rotating object: phi: %s rad = %s degrees",
-                    phi, phi*180/math.pi)
+        logger.info("rotating object: phi: %s rad = %s degrees", phi, phi * 180 / math.pi)
 
         R = [[v[0] * v[0] * (1 - math.cos(phi)) + math.cos(phi),
              v[0] * v[1] * (1 - math.cos(phi)) - v[2] * math.sin(phi),

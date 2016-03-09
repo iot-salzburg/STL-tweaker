@@ -4,7 +4,7 @@
 Author: Christoph Schranz, 12.01.2016 
 
 
-## Installing required modules:
+## Installing required modules: (necessary for binary STL)
 If your STL file is written in [ascii](https://de.wikipedia.org/wiki/STL-Schnittstelle#ASCII-Format), you can start tweaking!
 
 Otherwise, you have to install the following packages:

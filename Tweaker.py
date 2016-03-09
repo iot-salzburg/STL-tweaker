@@ -94,7 +94,7 @@ class Tweak:
         self.phi=phi
         self.R=R
         self.Unprintability=Unprintability
-        self.Zn=bestside
+        self.Zn=bestside[0]
         return None
 
 

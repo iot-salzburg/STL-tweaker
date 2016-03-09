@@ -23,7 +23,7 @@ import logging
 logger = logging.getLogger()
 import Tweaker
 
-filetype='ascii'
+filetype='bin' #'ascii'
 
 class FileHandler:
     def STLReader(original):
@@ -84,6 +84,7 @@ class FileHandler:
 
 
 if __name__ == "__main__":
+    stime=time.time()
     if len(sys.argv) in [2,3]:
         print("Finding the best orientation for your object")
         f=sys.argv[1]
@@ -121,20 +122,30 @@ if __name__ == "__main__":
 
             print("\nv: "+str(x.v))
             print("phi: "+str(x.phi))
+            #print("Tweaked Z-axis: "+str(x.Zn))
             #print("R: "+str(x.R))
             print("Unprintability: "+str(x.Unprintability))
             
-            tweakedcontent=FileHandler.rotate(x.R, content, name)
+            #print("\nTime needed: {}".format(time.time()-stime))
+
+            if x.Zn==[0,0,1]:
+                tweakedcontent=original
+            else:
+                tweakedcontent=FileHandler.rotate(x.R, content, name)
+                
             if x.Unprintability > 12:
                 logger.debug("Your object is tricky to print. Use a support structure!")
                 tweakedcontent+=" {supportstructure:yes}"
             logger.debug("Rotated")
             
-            tweaked=f.split(".")[0]+"_tweaked."+f.split(".")[1]
+            tweaked=f.split(".")[0]+"_tweaked."+f.split(".")[-1]
             with open(tweaked,'w') as outfile:
                 outfile.write(tweakedcontent)
-
-            print("\nSuccessfully Rotated!")        
+            print("\nSuccessfully Rotated!")
+            
+            #print("\nTime needed: {}".format(time.time()-stime))
+        else:
+            print("You have to use a stl file")
     else:
         logger.warning("You have to load a STL file.")
         print("""Your command should be of the form <FileHandler.py> 

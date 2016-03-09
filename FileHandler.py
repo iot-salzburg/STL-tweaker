@@ -23,7 +23,9 @@ import logging
 logger = logging.getLogger()
 import Tweaker
 
-filetype='bin' #'ascii'
+## If your file isn't written in ascii, convert it or install the numpy-stl 
+## packages and switch the filetype to "bin".
+filetype='ascii' #'bin' 
 
 class FileHandler:
     def STLReader(original):

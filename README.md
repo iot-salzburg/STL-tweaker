@@ -9,7 +9,7 @@ FileHandler.py must be executable.
 
 `FileHandler.py yourobject.stl [optional: int(yourownangle)]`
 
-## Installing required modules:  (for binary STL)
+## Installing optional modules:  (for binary STL)
 If your STL file is written in [ascii](https://de.wikipedia.org/wiki/STL-Schnittstelle#ASCII-Format), you can start tweaking!
 
 Otherwise, you have to install the following packages:

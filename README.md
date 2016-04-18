@@ -1,10 +1,15 @@
 # STL-tweaker
-##The STL-tweaker is a auto-rotate module which finds the STL object's optimal orientation in the printing platform to improve the efficiency of the 3D print.
+##The STL-tweaker is an auto-rotate module which finds the STL object's optimal orientation on the printing platform to improve the efficiency of the 3D print.
 
 Author: Christoph Schranz, 12.01.2016 
 
+## Quickstart:  
 
-## Installing required modules: (necessary for binary STL)
+FileHandler.py must be executable.  
+
+`FileHandler.py yourobject.stl [optional: int(yourownangle)]`
+
+## Installing required modules:  (for binary STL)
 If your STL file is written in [ascii](https://de.wikipedia.org/wiki/STL-Schnittstelle#ASCII-Format), you can start tweaking!
 
 Otherwise, you have to install the following packages:
@@ -33,10 +38,4 @@ Testing module:
 
 [More infos:](https://github.com/WoLpH/numpy-stl)  
 
-
-## Quickstart:  
-
-FileHandler.py must be executable.  
-
-`FileHandler.py yourobject.stl [optional: int(yourownangle)]`
 

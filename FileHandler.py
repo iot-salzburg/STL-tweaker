@@ -23,9 +23,6 @@ import logging
 logger = logging.getLogger()
 import Tweaker
 
-## If your file isn't written in ascii, convert it or install the numpy-stl 
-## packages and switch the filetype to "bin".
-filetype='ascii' #'bin' 
 
 class FileHandler:
     def STLReader(original):
@@ -95,21 +92,29 @@ if __name__ == "__main__":
             name=f.split("/")[-1].split(".")[0]        
             logger.debug("...calculating the printability of a new object")
             
-            if filetype=='ascii':
-                original=open(f,"r").read()
-            else:
+            try:
+                ofile=open(f,"r")
+                original=ofile.read()
+                logger.debug("...arranging original content")
+                content=FileHandler.STLReader(original)
+                print("Reading ascii STL")
+            except:
                 # In case of troubles check the module infos at the top or
                 # https://github.com/WoLpH/numpy-stl
-                print("Reading binary STL")
-                fascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
-                logger.debug("...generating ascii file")
-                os.system("stl2ascii %s %s" %(f,fascii))        
-                original=open(fascii,"r").read()
-                os.system("%s %s" %({'Windows':'del','Linux':'rm'}.get(platform.system()),fascii))
+                print("Reading another STL")
+                try:
+                    fascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
+                    logger.debug("...generating ascii file")
+                    os.system("stl2ascii %s %s" %(f,fascii))        
+                    original=open(fascii,"r").read()
+                    os.system("%s %s" %({'Windows':'del','Linux':'rm'}.get(platform.system()),fascii))
+                except:
+                    print("Check the stl2ascii module")
+                    
+                logger.debug("...arranging original content")
+                content=FileHandler.STLReader(original)
                 
-            logger.debug("...arranging original content")
-            content=FileHandler.STLReader(original)
-            
+            print("Hi")
             if len(sys.argv)==3:
                 CA=int(sys.argv[2])
                 try:

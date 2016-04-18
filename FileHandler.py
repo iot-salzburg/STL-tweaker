@@ -114,7 +114,6 @@ if __name__ == "__main__":
                 logger.debug("...arranging original content")
                 content=FileHandler.STLReader(original)
                 
-            print("Hi")
             if len(sys.argv)==3:
                 CA=int(sys.argv[2])
                 try:

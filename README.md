@@ -3,6 +3,8 @@
 
 Author: Christoph Schranz, 12.01.2016 
 
+[STL-tweaker](http://www.salzburgresearch.at/blog/3d-print-positioning/)
+
 ## Quickstart:  
 
 FileHandler.py must be executable.  
@@ -36,7 +38,5 @@ Testing module:
 
 `stl2ascii <yourobject.stl> ` 
 
-[numpy-stl:](https://github.com/WoLpH/numpy-stl)  
-
-[More infos:](http://www.salzburgresearch.at/blog/3d-print-positioning/)
+More about [numpy-stl](https://github.com/WoLpH/numpy-stl).
 

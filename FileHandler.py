@@ -24,6 +24,7 @@ import Tweaker
 
 
 class FileHandler:
+    '''Open STL file and return content as ascii.'''
     def openSTL(f):
         try:
             ofile=open(f,"r")
@@ -31,10 +32,10 @@ class FileHandler:
             if len(original) == os.path.getsize(f) > 0:
                 readsucceed=True
                 print("Reading ascii STL")
-                logger.debug("The file is an ascii STL as expected.")
+                logger.debug("The file is a proper ascii STL.")
             else:
                 readsucceed=False
-                logger.debug("The file is not an ascii STL as expected.")
+                logger.debug("The file is not a proper ascii STL.")
         except:
             logger.debug("The file is not an ascii STL.")
             readsucceed=False
@@ -56,13 +57,13 @@ class FileHandler:
             except:
                 logger.debug("Try-exception: stl2ascii function of numpy-stl seems not to work")
         if not readsucceed:
-            print("File couldn't been read")
+            print("File couldn't be read")
             print("""Check the stl2ascii function of numpy-stl: https://github.com/WoLpH/numpy-stl""")
                     
         return (original, readsucceed)
         
     def STLReader(original):
-        '''Reading mesh data from ascii STL'''
+        '''Read mesh data from ascii content'''
         content=[]
         for li in original.split("vertex ")[1:]:
             li=li.split("\n")[0].split(" ")

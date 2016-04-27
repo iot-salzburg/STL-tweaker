@@ -9,6 +9,7 @@
 ##  Call the methods v,phi,R, Zn or Unprintability. View the doc for more informations
 
 import math
+import sys
 import logging
 logger = logging.getLogger()
 
@@ -19,6 +20,7 @@ class Tweak:
       [v2x,v2y,v2z],
       .....
       [vnx,vny,vnz]]
+    Note that all quantities are in mm.
     If you want to use the mesh format with inversed x and y coords, go to
     arrange_mesh() and replace "face[0], face[1]" by "-face[0], -face[1]".
 
@@ -47,7 +49,7 @@ class Tweak:
         n=[0,0,-1]              # default normal vector
 
         content=self.arrange_mesh(content)
-        
+
         logger.debug("CA=%i\n...calculating initial lithographs", CA)
         amin=self.approachfirstvertex(content)
         lit=self.lithograph(content,[0,0,1],amin,CA)
@@ -72,7 +74,7 @@ class Tweak:
                 ret=self.lithograph(content, sn, amin, CA)
                 logger.info("Ground, Overhang: %s",ret)
                 liste.append([sn, ret[0], ret[1]])   #[Vector, touching area, Overhang]
-            
+                
             logger.debug("...calculating best option")
             Unprintability=999999999
             for i in liste:
@@ -230,4 +232,5 @@ class Tweak:
              [v[2] * v[0] * (1 - math.cos(phi)) - v[1] * math.sin(phi),
               v[2] * v[1] * (1 - math.cos(phi)) + v[0] * math.sin(phi),
               v[2] * v[2] * (1 - math.cos(phi)) + math.cos(phi)]]
+        
         return [v,phi,R]

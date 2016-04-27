@@ -36,6 +36,7 @@ Testing module:
 
 `stl2ascii <yourobject.stl> ` 
 
-[More infos:](https://github.com/WoLpH/numpy-stl)  
+[numpy-stl:](https://github.com/WoLpH/numpy-stl)  
 
+[More infos:](http://www.salzburgresearch.at/blog/3d-print-positioning/)
 

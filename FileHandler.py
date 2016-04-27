@@ -13,18 +13,54 @@
 ## pip install numpy-stl
 ## More infos and licences for this package at https://github.com/WoLpH/numpy-stl
 
-## Usage: <FileHandler.py> <yourobject> [optional: <int(yourownangle)>]
+## Usage: <FileHandler.py> <yourobject.stl> [optional: <int(yourownangle)>]
 
 import sys
 import os
 import platform
-import time
 import logging
 logger = logging.getLogger()
 import Tweaker
 
 
 class FileHandler:
+    def openSTL(f):
+        try:
+            ofile=open(f,"r")
+            original=ofile.read()
+            if len(original) == os.path.getsize(f) > 0:
+                readsucceed=True
+                print("Reading ascii STL")
+                logger.debug("The file is an ascii STL as expected.")
+            else:
+                readsucceed=False
+                logger.debug("The file is not an ascii STL as expected.")
+        except:
+            logger.debug("The file is not an ascii STL.")
+            readsucceed=False
+        if not readsucceed:
+            try:
+                fascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
+                logger.debug("...generating ascii file")
+                # In case of troubles check the module infos at the top or
+                # https://github.com/WoLpH/numpy-stl
+                os.system("stl2ascii %s %s" %(f,fascii))
+                original=open(fascii,"r").read()
+
+                if len(original) == os.path.getsize(fascii) > 0:
+                    readsucceed=True
+                    print("Reading STL file")
+                else:
+                    logger.debug("Else: stl2ascii function of numpy-stl seems not to work")
+                os.system("%s %s" %({'Windows':'del','Linux':'rm'}.get(platform.system()),fascii))
+            except:
+                logger.debug("Try-exception: stl2ascii function of numpy-stl seems not to work")
+        if not readsucceed:
+            print("File couldn't been read")
+            print("""Check the stl2ascii function of numpy-stl: https://github.com/WoLpH/numpy-stl""")
+                    
+        return (original, readsucceed)
+        
     def STLReader(original):
         '''Reading mesh data from ascii STL'''
         content=[]
@@ -34,7 +70,6 @@ class FileHandler:
             y=float(li[1])
             z=float(li[2])
             content.append([x,y,z])
-        #print("\n\nContent:\n"+str(content))
         return content
 
 
@@ -83,75 +118,54 @@ class FileHandler:
 
 
 if __name__ == "__main__":
-    stime=time.time()
     if len(sys.argv) in [2,3]:
-        print("Finding the best orientation for your object")
+        logger.debug("...finding best orientation.")
         f=sys.argv[1]
         
         if f.split(".")[-1].lower() == "stl":
-            name=f.split("/")[-1].split(".")[0]        
-            logger.debug("...calculating the printability of a new object")
-            
-            try:
-                ofile=open(f,"r")
-                original=ofile.read()
+            name=f.split("/")[-1].split(".")[0]
+            logger.debug("...opening new object")
+            (original, readsucceed) = FileHandler.openSTL(f)
+
+            if readsucceed:
                 logger.debug("...arranging original content")
-                content=FileHandler.STLReader(original)
-                print("Reading ascii STL")
-            except:
-                # In case of troubles check the module infos at the top or
-                # https://github.com/WoLpH/numpy-stl
-                print("Reading another STL")
-                try:
-                    fascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
-                    logger.debug("...generating ascii file")
-                    os.system("stl2ascii %s %s" %(f,fascii))        
-                    original=open(fascii,"r").read()
-                    os.system("%s %s" %({'Windows':'del','Linux':'rm'}.get(platform.system()),fascii))
-                except:
-                    print("Check the stl2ascii module")
+                content = FileHandler.STLReader(original)
+                          
+                if len(sys.argv)==3:
+                    CA=int(sys.argv[2])
+                    try:
+                        x=Tweaker.Tweak(content, CA)
+                    except (KeyboardInterrupt, SystemExit):
+                        raise
+                else:
+                    try:
+                        x=Tweaker.Tweak(content)          
+                    except (KeyboardInterrupt, SystemExit):
+                        raise
+                #Variables: v, phi, R, F, Unprintability
+                #print("\nv: "+str(x.v))
+                #print("phi: "+str(x.phi))
+                #print("Tweaked Z-axis: "+str(x.Zn))
+                #print("R: "+str(x.R))
+                #print("Unprintability: "+str(x.Unprintability))
+
+                if x.Zn==[0,0,1]:
+                    tweakedcontent=original
+                else:
+                    tweakedcontent=FileHandler.rotate(x.R, content, name)
                     
-                logger.debug("...arranging original content")
-                content=FileHandler.STLReader(original)
+                if x.Unprintability > 7:
+                    logger.debug("Your object is tricky to print. Use a support structure!")
+                    tweakedcontent+=" {supportstructure:yes}"
+                logger.debug("Rotated")
                 
-            if len(sys.argv)==3:
-                CA=int(sys.argv[2])
-                try:
-                    x=Tweaker.Tweak(content, CA) #[v,phi,R,F]
-                except (KeyboardInterrupt, SystemExit):
-                    raise
-            else:
-                try:
-                    x=Tweaker.Tweak(content)          
-                except (KeyboardInterrupt, SystemExit):
-                    raise
-
-            print("\nv: "+str(x.v))
-            print("phi: "+str(x.phi))
-            #print("Tweaked Z-axis: "+str(x.Zn))
-            #print("R: "+str(x.R))
-            print("Unprintability: "+str(x.Unprintability))
-            
-            #print("\nTime needed: {}".format(time.time()-stime))
-
-            if x.Zn==[0,0,1]:
-                tweakedcontent=original
-            else:
-                tweakedcontent=FileHandler.rotate(x.R, content, name)
-                
-            if x.Unprintability > 12:
-                logger.debug("Your object is tricky to print. Use a support structure!")
-                tweakedcontent+=" {supportstructure:yes}"
-            logger.debug("Rotated")
-            
-            tweaked=f.split(".")[0]+"_tweaked."+f.split(".")[-1]
-            with open(tweaked,'w') as outfile:
-                outfile.write(tweakedcontent)
-            print("\nSuccessfully Rotated!")
-            
-            #print("\nTime needed: {}".format(time.time()-stime))
+                tweaked=f.split(".")[0]+"_tweaked."+f.split(".")[-1]
+                with open(tweaked,'w') as outfile:
+                    outfile.write(tweakedcontent)
+                print("\nSuccessfully Rotated!")
         else:
             print("You have to use a stl file")
+            logger.warning("You have to load a STL Object.")
     else:
         logger.warning("You have to load a STL file.")
         print("""Your command should be of the form <FileHandler.py> 

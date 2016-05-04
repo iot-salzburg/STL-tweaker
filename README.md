@@ -7,14 +7,14 @@ Author: Christoph Schranz, 12.01.2016
 
 ## Quickstart:  
 
-FileHandler.py must be executable.  
+Executable FileHandler.py works on ascii STL.
 
 `FileHandler.py yourobject.stl [optional: int(yourownangle)]`
 
 ## Installing optional modules:  (for binary STL)
 If your STL file is written in [ascii](https://de.wikipedia.org/wiki/STL-Schnittstelle#ASCII-Format), you can start tweaking!
 
-Otherwise, you have to install the following packages:
+Otherwise, you have to convert it (e.g. per webservice) or install the following packages:
 
 Linux: 	
 ```bash

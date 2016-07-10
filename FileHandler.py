@@ -1,3 +1,4 @@
+#!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
 
 import sys, argparse

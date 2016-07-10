@@ -1,80 +1,38 @@
-#!/usr/bin/env python3.4
-# Author: Christoph Schranz, Salzburg Research Forschungsgesellschaft mbH
-# Date: 12.01.2016
-# STL-tweaker version: 0603
+# Author: Christoph Schranz, Salzburg Research
 
-## Modules required (only for binary STLs)
-## Linux: apt-get install python-pip
-## Linux: pip install numpy
-## Windows: https://pip.pypa.io/en/latest/installing/
-## Windows: pip install -i https://pypi.binstar.org/carlkl/simple numpy
-## pip install python-utils
-## pip install python-utils --upgrade
-## pip install numpy-stl
-## More infos and licences for this package at https://github.com/WoLpH/numpy-stl
-
-## Usage: <FileHandler.py> <yourobject.stl> [optional: <int(yourownangle)>]
-
-import sys
+import sys, argparse
 import os
-import platform
-import logging
-logger = logging.getLogger()
-import Tweaker
+import struct
+import time
+from Tweaker import Tweak
 
 
-class FileHandler:
-    '''Open STL file and return content as ascii.'''
-    def openSTL(f):
-        try:
-            ofile=open(f,"r")
-            original=ofile.read()
-            if len(original) == os.path.getsize(f) > 0:
-                readsucceed=True
-                print("Reading ascii STL")
-                logger.debug("The file is a proper ascii STL.")
-            else:
-                readsucceed=False
-                logger.debug("The file is not a proper ascii STL.")
-        except:
-            logger.debug("The file is not an ascii STL.")
-            readsucceed=False
-        if not readsucceed:
-            try:
-                fascii=f.split(".")[0]+"_ascii."+f.split(".")[1]
-                logger.debug("...generating ascii file")
-                # In case of troubles check the module infos at the top or
-                # https://github.com/WoLpH/numpy-stl
-                os.system("stl2ascii %s %s" %(f,fascii))
-                original=open(fascii,"r").read()
-
-                if len(original) == os.path.getsize(fascii) > 0:
-                    readsucceed=True
-                    print("Reading STL file")
-                else:
-                    logger.debug("Else: stl2ascii function of numpy-stl seems not to work")
-                os.system("%s %s" %({'Windows':'del','Linux':'rm'}.get(platform.system()),fascii))
-            except:
-                logger.debug("Try-exception: stl2ascii function of numpy-stl seems not to work")
-        if not readsucceed:
-            print("File couldn't be read")
-            print("""Check the stl2ascii function of numpy-stl: https://github.com/WoLpH/numpy-stl""")
-                    
-        return (original, readsucceed)
-        
-    def STLReader(original):
-        '''Read mesh data from ascii content'''
-        content=[]
-        for li in original.split("vertex ")[1:]:
-            li=li.split("\n")[0].split(" ")
-            x=float(li[0])
-            y=float(li[1])
-            z=float(li[2])
-            content.append([x,y,z])
-        return content
+class FileHandler:      
+    def loadAsciiSTL(f):
+        '''Reading mesh data from ascii STL'''
+        mesh=list()
+        for line in f:
+            if "vertex" in line:
+                data=line.split()[1:]
+                mesh.append([float(data[0]), float(data[1]), float(data[2])])
+        return mesh
 
 
-    def rotate(R, content, name):
+    def loadBinarySTL(f):
+        '''Reading mesh data from binary STL'''
+        	#Skip the header
+        f.read(80-5)
+        faceCount = struct.unpack('<I', f.read(4))[0]
+        mesh=list()
+        for idx in range(0, faceCount):
+            data = struct.unpack("<ffffffffffffH", f.read(50))
+            mesh.append([data[3], data[4], data[5]])
+            mesh.append([data[6], data[7], data[8]])
+            mesh.append([data[9], data[10], data[11]])
+        #print("binary mesh {} {}".format(faceCount, len(mesh)))
+        return mesh
+
+    def rotate(R, content, filename):
         '''Rotate the object and save as ascii STL'''
         face=[]
         mesh=[]
@@ -91,8 +49,7 @@ class FileHandler:
                 face=[]
         content=mesh
             
-        logger.debug("create resulting ascii stl using solid name %s", name)
-        tweaked = "solid %s" % name
+        tweaked = "solid %s" % filename
         for li in content:
             for vert in range(len(li)-1):
                 a=li[vert + 1]
@@ -113,61 +70,115 @@ class FileHandler:
     endfacet""" % (n[0], n[1], n[2], li[1][0], li[1][1], li[1][2], li[2][0], li[2][1], li[2][2], li[3][0], li[3][1],
                li[3][2])
     
-        tweaked += "\nendsolid %s\n" % name
+        tweaked += "\nendsolid %s\n" % filename
 
         return tweaked
 
 
-if __name__ == "__main__":
-    if len(sys.argv) in [2,3]:
-        logger.debug("...finding best orientation.")
-        f=sys.argv[1]
+    
+    def getargs():
+        parser = argparse.ArgumentParser(description=
+                "Orientation tool for better 3D prints")
+        parser.add_argument('-vb', '--verbose', action="store_true",dest="verbose", 
+                            help="increase output verbosity", default=False)
+        parser.add_argument('-i', action="store",  
+                            dest="inputfile", help="select input file")
+        parser.add_argument('-o', action="store", dest="outputfile",
+                            help="select output file. '_tweaked' is postfix by default")
+        parser.add_argument('-a', '--angle', action="store", dest="angle", type=int,
+                            default=45,
+                            help="specify critical angle for overhang demarcation in degrees")
+        parser.add_argument('-f', '--fast', action="store_true", dest="fast", default=False,
+                            help="fast calculation")
+        parser.add_argument('-v', '--version', action="store_true", dest="version",
+                            help="print version number and exit", default=False)
+        parser.add_argument('-r', '--result', action="store_true", dest="result",
+                            help="show result of calculation and exit without creating output file",
+                            default=False)                            
+        args = parser.parse_args()
+
+        if args.version:
+            print("Tweaker 1.2.2, (10 Juli 2016)")
+            return None
+            
+        if not args.inputfile:   
+            curpath = os.path.dirname(os.path.realpath(__file__))
+            args.inputfile=curpath + os.sep + "demo_object.stl"
+ 
+        if not args.outputfile:
+            args.outputfile = os.path.splitext(args.inputfile)[0] + "_tweaked" 
+            args.outputfile += os.path.splitext(args.inputfile)[1].lower()
         
-        if f.split(".")[-1].lower() == "stl":
-            name=f.split("/")[-1].split(".")[0]
-            logger.debug("...opening new object")
-            (original, readsucceed) = FileHandler.openSTL(f)
-
-            if readsucceed:
-                logger.debug("...arranging original content")
-                content = FileHandler.STLReader(original)
-                          
-                if len(sys.argv)==3:
-                    CA=int(sys.argv[2])
-                    try:
-                        x=Tweaker.Tweak(content, CA)
-                    except (KeyboardInterrupt, SystemExit):
-                        raise
-                else:
-                    try:
-                        x=Tweaker.Tweak(content)          
-                    except (KeyboardInterrupt, SystemExit):
-                        raise
-                #Variables: v, phi, R, F, Unprintability
-                #print("\nv: "+str(x.v))
-                #print("phi: "+str(x.phi))
-                #print("Tweaked Z-axis: "+str(x.Zn))
-                #print("R: "+str(x.R))
-                #print("Unprintability: "+str(x.Unprintability))
-
-                if x.Zn==[0,0,1]:
-                    tweakedcontent=original
-                else:
-                    tweakedcontent=FileHandler.rotate(x.R, content, name)
-                    
-                if x.Unprintability > 7:
-                    logger.debug("Your object is tricky to print. Use a support structure!")
-                    tweakedcontent+=" {supportstructure:yes}"
-                logger.debug("Rotated")
+        
+        argv = sys.argv[1:]
+        if len(argv)==0:
+            print("No additional arguments found. Testing calculation with demo object.")
+        elif os.path.splitext(args.inputfile)[1].lower() != ".stl":
+            print("File type is not supported.")
+            return None
                 
-                tweaked=f.split(".")[0]+"_tweaked."+f.split(".")[-1]
-                with open(tweaked,'w') as outfile:
-                    outfile.write(tweakedcontent)
-                print("\nSuccessfully Rotated!")
-        else:
-            print("You have to use a stl file")
-            logger.warning("You have to load a STL Object.")
+        return args
+
+
+if __name__ == "__main__":
+    ## Get the command line arguments. If no arguments were found
+    ## a demo object file will be tweaked.
+    stime=time.time()
+    try:
+        args = FileHandler.getargs()
+        if args is None:
+            sys.exit()
+    except:
+        sys.exit()
+
+                        
+    ## loading mesh format of the object
+    f=open(args.inputfile,"rb")
+    if "solid" in str(f.read(5).lower()):
+        f=open(args.inputfile,"r")
+        mesh=FileHandler.loadAsciiSTL(f)
+        if len(mesh) < 3:
+             f.seek(5, os.SEEK_SET)
+             mesh=FileHandler.loadBinarySTL(f)
     else:
-        logger.warning("You have to load a STL file.")
-        print("""Your command should be of the form <FileHandler.py> 
-        <yourobject> [optional: <int(yourownangle)>]""")
+        mesh=FileHandler.loadBinarySTL(f)
+    
+    
+    ## Start of tweaking.
+    if len(sys.argv)<=1 or args.verbose:
+        print("Calculating the optimal orientation: {}"
+                        .format(args.inputfile.split("\\")[-1]))
+    try:
+        cstime = time.time()
+        x=Tweak(mesh, args.angle)          
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    
+    
+    ## List some stats.
+    if args.result or len(sys.argv)<=1 or args.verbose:
+        print("\nAxis, angle: \t\t{v}, {phi}".format(v=x.v, phi=x.phi))
+        print("Tweaked Z-axis: \t"+str(x.Zn))
+        print("Rotation matrix: \t{}\n\t\t\t{}\n\t\t\t{}".format(x.R[0],x.R[1],x.R[2]))
+        print("Unprintability: \t"+str(x.Unprintability))
+        if args.result: sys.exit()   
+        print("\nTime needed for calculation: {}".format(time.time()-cstime))
+    
+    
+    ## Writing the content of the tweaked file
+    if x.Zn==[0,0,1]:
+        tweakedcontent=mesh
+    else:
+        tweakedcontent=FileHandler.rotate(x.R, mesh, args.inputfile)
+    
+    if x.Unprintability > 12:
+        tweakedcontent+=" {supportstructure:yes}"
+    
+    ## Create the tweaked output file
+    with open(args.outputfile,'w') as outfile:
+        outfile.write(tweakedcontent)
+        
+    ## Success message
+    if len(sys.argv)<=1 or args.verbose:
+        print("Time needed for rotation: {}".format(time.time()-stime))
+        print("Successfully Rotated!")

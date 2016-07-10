@@ -1,17 +1,8 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
-# Date: 3.3.2016
-# STL-tweaker version: 9.3.16
 
-## Usage:
-##  Call the function Tweaker.Tweak(mesh_content).
-##  Note the correct mesh format, which can be configured in arrange_mesh
-##  Call the methods v,phi,R, Zn or Unprintability. View the doc for more informations
-
-import math
 import sys
-import logging
-logger = logging.getLogger()
+import math
 
 class Tweak:
     """ The Tweaker is an auto rotate class for 3D objects.
@@ -20,23 +11,22 @@ class Tweak:
       [v2x,v2y,v2z],
       .....
       [vnx,vny,vnz]]
-    Note that all quantities are in mm.
-    If you want to use the mesh format with inversed x and y coords, go to
-    arrange_mesh() and replace "face[0], face[1]" by "-face[0], -face[1]".
+    You can adjust this format in arrange_mesh(). For some applications,
+     it is necessary to replace "face[0], face[1]" by "-face[0], -face[1]".
 
     The critical angle CA is a variable that can be set by the operator as
     it may depend on multiple factors such as material used, printing
-    temperature, printing speed, etc.
+     temperature, printing speed, etc.
 
     Following attributes of the class are supported:
     The tweaked z-axis' vector .z.
     Euler coords .v and .phi, where v is orthogonal to both z and z' and phi
-    the angle between z and z' in rad.
+     the angle between z and z' in rad.
     The rotational matrix .R, the new mesh is created, by multiplying each
-    vector with R.
+     vector with R.
     The vector of the new
-    And the relative .Unprintability of the tweaked object. If this value is
-    greater than 15, a support structure is suggested.
+    And the relative unprintability of the tweaked object. If this value is
+     greater than 15, a support structure is suggested.
         """
     def __init__(self, content, CA=45):
         self.content=content
@@ -49,53 +39,49 @@ class Tweak:
         n=[0,0,-1]              # default normal vector
 
         content=self.arrange_mesh(content)
-
-        logger.debug("CA=%i\n...calculating initial lithographs", CA)
+        
+        ## Calculating initial lithographs
         amin=self.approachfirstvertex(content)
         lit=self.lithograph(content,[0,0,1],amin,CA)
         liste=[[[0,0,1],lit[0], lit[1]]]
-        logger.info("vector: , groundA: , OverhangA: %s", liste[0])
+        ## vector: , groundA: , OverhangA: %s", liste[0]
 
         if (liste[0][2]/ABSLIMIT)+(liste[0][2]/liste[0][1]/RELLIMIT)<1:
-            logger.debug("The default orientation is alright!")
+            ## The default orientation is alright!
             bestside=liste[0]
-            Unprintability=1
+            Unprintability=1.0
         else:
-            logger.debug("The default orientation is not perfect.")
-            logger.debug("...calculating orientations")
+            ## The default orientation is not perfect. Calculating orientations
             o=self.orientation(content, n)
-            logger.info("Orient: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
+            ## "Orient: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
             
             for side in o:
                 sn=[round(-i,6)+0 for i in side[0]]
-                logger.info("side: [vector: %s, gesamtA: %s]",sn, side[1])
+                ## vector: sn, gesamtA: side[1]
                 amin=self.approachvertex(content, side[0])
-                logger.info("amin:", amin)
+
                 ret=self.lithograph(content, sn, amin, CA)
-                logger.info("Ground, Overhang: %s",ret)
+                ## "Ground, Overhang: %s",ret
                 liste.append([sn, ret[0], ret[1]])   #[Vector, touching area, Overhang]
-                
-            logger.debug("...calculating best option")
-            Unprintability=999999999
+            
+            ## Calculating best option
+            Unprintability=sys.maxsize
             for i in liste:
-                F=(i[2]/ABSLIMIT)+(i[2]/i[1]/RELLIMIT)  # target function
-                logger.info("Side: %s / Unprintability %s",i,F)
+                F=float("{:f}".format((i[2]/ABSLIMIT)+(i[2]/i[1]/RELLIMIT)))  # target function
                 if F<Unprintability-0.2:
                     Unprintability=F
                     bestside=i
                 if Unprintability<1:
                     Unprintability=1
                     
-        logger.info("best side %s with Unprintability: %f", bestside, Unprintability)
-        
+       
         if bestside:
             [v,phi,R] = self.euler(bestside)
-            logger.debug("Finished!")
             
         self.v=v
         self.phi=phi
         self.R=R
-        self.Unprintability=Unprintability
+        self.Unprintability = Unprintability
         self.Zn=bestside[0]
         return None
 
@@ -217,20 +203,21 @@ class Tweak:
             v=[1,0,0]
             phi=0
         else:
-            phi = math.pi - math.acos( -bestside[0][2] )
-            v = [round(i, 5) + 0 for i in   [-bestside[0][1] , bestside[0][0], 0]]
+            phi = float("{:f}".format(math.pi - math.acos( -bestside[0][2] )))
+            v = [-bestside[0][1] , bestside[0][0], 0]
             v = [i / math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) for i in v]
-        logger.info("v: %s", v)
-        logger.info("rotating object: phi: %s rad = %s degrees", phi, phi * 180 / math.pi)
+            v = [float("{:f}".format(i)) for i in v]
 
         R = [[v[0] * v[0] * (1 - math.cos(phi)) + math.cos(phi),
-             v[0] * v[1] * (1 - math.cos(phi)) - v[2] * math.sin(phi),
-             v[0] * v[2] * (1 - math.cos(phi)) + v[1] * math.sin(phi)],
+              v[0] * v[1] * (1 - math.cos(phi)) - v[2] * math.sin(phi),
+              v[0] * v[2] * (1 - math.cos(phi)) + v[1] * math.sin(phi)],
              [v[1] * v[0] * (1 - math.cos(phi)) + v[2] * math.sin(phi),
               v[1] * v[1] * (1 - math.cos(phi)) + math.cos(phi),
               v[1] * v[2] * (1 - math.cos(phi)) - v[0] * math.sin(phi)],
              [v[2] * v[0] * (1 - math.cos(phi)) - v[1] * math.sin(phi),
               v[2] * v[1] * (1 - math.cos(phi)) + v[0] * math.sin(phi),
               v[2] * v[2] * (1 - math.cos(phi)) + math.cos(phi)]]
+
+        R = [[float("{:6f}".format(val)) for val in row] for row in R] 
         
         return [v,phi,R]

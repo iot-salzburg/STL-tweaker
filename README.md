@@ -7,7 +7,7 @@ Author: Christoph Schranz, 12.01.2016
 
 ## Quickstart:  
 
-`python FileHandler.py -i yourobject.stl -r`
+`python FileHandler.py -i yourobject.stl -vb`
 
-##Find more options:
+## Find more options:
 `python FileHandler.py -h`

@@ -102,7 +102,7 @@ class FileHandler:
         if not args.inputfile:   
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
-#            args.inputfile=curpath + os.sep + "kugel_konisch2.stl" ###TODO
+#            args.inputfile=curpath + os.sep + "kugel_konisch.stl"
 
             
     

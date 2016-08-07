@@ -166,10 +166,12 @@ if __name__ == "__main__":
         print(""" Rotation matrix: 
     {:2f}\t{:2f}\t{:2f}
     {:2f}\t{:2f}\t{:2f}
-    {:2f}\t{:2f}\t{:2f}""".format(*x.R[0], *x.R[1], *x.R[2]))
+    {:2f}\t{:2f}\t{:2f}""".format(x.R[0][0], x.R[0][1], x.R[0][2],
+                                  x.R[1][0], x.R[1][1], x.R[1][2], 
+                                  x.R[2][0], x.R[2][1], x.R[2][2]))
         print(" Unprintability: \t{}".format(x.Unprintability))
         
-        print("\nFound result:  \t{:2f} s".format(time.time()-cstime))
+        print("\nFound result:    \t{:2f} s".format(time.time()-cstime))
         if args.result: 
             sys.exit()   
         

@@ -3,6 +3,8 @@
 
 import sys
 import math
+import random
+import time
 
 class Tweak:
     """ The Tweaker is an auto rotate class for 3D objects.
@@ -28,53 +30,75 @@ class Tweak:
     And the relative unprintability of the tweaked object. If this value is
      greater than 15, a support structure is suggested.
         """
-    def __init__(self, content, CA=45):
-        self.content=content
-        self.CA=CA
-        self.workflow(self.content, self.CA)
-
-    def workflow(self,content, CA):
-        ABSLIMIT=80             # Some values to scale the printability
-        RELLIMIT=1
-        n=[0,0,-1]              # default normal vector
-
-        content=self.arrange_mesh(content)
+    def __init__(self, mesh, bi_algorithmic, verbose, CA=45):
         
-        ## Calculating initial lithographs
+        self.bi_algorithmic = bi_algorithmic
+        self.workflow(mesh, bi_algorithmic, verbose, CA)
+        
+    def workflow(self, mesh, bi_algorithmic, verbose, CA):
+        n=[0,0,-1]              # default normal vector
+        
+        content=self.arrange_mesh(mesh)
+        
+        ## Calculating initial printability
         amin=self.approachfirstvertex(content)
         lit=self.lithograph(content,[0,0,1],amin,CA)
         liste=[[[0,0,1],lit[0], lit[1]]]
         ## vector: , groundA: , OverhangA: %s", liste[0]
 
-        if (liste[0][2]/ABSLIMIT)+(liste[0][2]/liste[0][1]/RELLIMIT)<1:
+        if self.target_function(liste[0][1], liste[0][2]) < 1:
             ## The default orientation is alright!
             bestside=liste[0]
             Unprintability=1.0
         else:
-            ## The default orientation is not perfect. Calculating orientations
-            o=self.orientation(content, n)
-            ## "Orient: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
+            ## The default orientation is not perfect.
+            ## Searching promising orientations: 
+            ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
+            arcum_time = time.time()
+            o=self.area_cumulation(content, n)
+            arcum_time = time.time() - arcum_time
             
+            if bi_algorithmic:
+                dialg_time = time.time()
+                o += self.egde_plus_vertex(mesh, 6)
+                dialg_time = time.time() - dialg_time          
+                
+            if verbose:
+                print("Examine {} orientations:".format(len(o)))
+                for orient in o:
+                    print("  "+str(orient[0]))
+                
+            # Calculate the printability of each orientation
+            lit_time = time.time()
             for side in o:
-                sn=[round(-i,6)+0 for i in side[0]]
-                ## vector: sn, gesamtA: side[1]
+                sn = [float("{:6f}".format(-i)) for i in side[0]]
+                ## vector: sn, cum_A: side[1]
                 amin=self.approachvertex(content, side[0])
-
                 ret=self.lithograph(content, sn, amin, CA)
-                ## "Ground, Overhang: %s",ret
                 liste.append([sn, ret[0], ret[1]])   #[Vector, touching area, Overhang]
-            
+           
             ## Calculating best option
             Unprintability=sys.maxsize
             for i in liste:
-                F=float("{:f}".format((i[2]/ABSLIMIT)+(i[2]/i[1]/RELLIMIT)))  # target function
-                if F<Unprintability-0.2:
+                # target function
+                F = self.target_function(i[1], i[2]) # touching area: i[1], overhang: i[2]
+                if F<Unprintability- 0.2:
                     Unprintability=F
                     bestside=i
-                if Unprintability<1:
-                    Unprintability=1
+                if Unprintability<1: Unprintability=1
                     
-       
+            lit_time = time.time() - lit_time
+        
+        print("""
+Time-stats of algorithm:
+  Area Cumulation:  \t{ac:6f} s
+  Edge plus Vertex:  \t{da:6f} s
+  Lithography Time:  \t{lt:6f} s  
+  Total Time:        \t{tot:6f} s
+""".format(ac=arcum_time, da=dialg_time, lt=lit_time, 
+           tot=arcum_time + dialg_time + lit_time))  
+           
+           
         if bestside:
             [v,phi,R] = self.euler(bestside)
             
@@ -85,28 +109,37 @@ class Tweak:
         self.Zn=bestside[0]
         return None
 
-
-    def arrange_mesh(self,content):
-        '''The Tweaker needs the content of the mesh object with the normals of the facetts.'''
+    def target_function(self, touching, overhang):
+        '''This function returns the printability with the touching area and overhang given.'''
+        ABSLIMIT=80             # Some values for scaling the printability
+        RELLIMIT=1
+        F = (overhang/ABSLIMIT) + (overhang/touching/RELLIMIT)
+        
+        ret = float("{:f}".format(F))
+        return ret
+        
+        
+    def arrange_mesh(self, mesh):
+        '''The Tweaker needs the mesh format of the object with the normals of the facetts.'''
         face=[]
-        mesh=[]
+        content=[]
         i=0
-        for li in content:      
+        for li in mesh:      
             face.append(li)
             i+=1
             if i%3==0:
-                mesh.append([])
+                content.append([])
                 v=[face[1][0]-face[0][0],face[1][1]-face[0][1],face[1][2]-face[0][2]]
                 w=[face[2][0]-face[0][0],face[2][1]-face[0][1],face[2][2]-face[0][2]]
                 a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
-                mesh[int(i/3-1)]=[[round(i,6) for i in [a[0],a[1],a[2]]],face[0],face[1],face[2]]
+                content[int(i/3-1)]=[[round(i,6) for i in [a[0],a[1],a[2]]],face[0],face[1],face[2]]
                 face=[]
-        return mesh
+        return content
 
     
     def approachfirstvertex(self,content):
         '''Returning the lowest z value'''
-        amin=999999999
+        amin=sys.maxsize
         for li in content:
             z=min([li[1][2],li[2][2],li[3][2]])
             if z<amin:
@@ -116,7 +149,7 @@ class Tweak:
 
     def approachvertex(self,content, n):
         '''Returning the lowest value regarding vector n'''
-        amin=999999999
+        amin=sys.maxsize
         n=[-i for i in n]
         normn=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
         for li in content:
@@ -129,7 +162,7 @@ class Tweak:
         return amin
 
 
-    def lithograph(self,content,n,amin, CA):
+    def lithograph(self, content, n, amin, CA):
         '''Calculating touching areas and overhangs regarding the vector n'''
         Overhang=1
         alpha=-math.cos((90-CA)*math.pi/180)
@@ -152,11 +185,56 @@ class Tweak:
                         Grundfl+=ali
         return [Grundfl, Overhang]
 
+    def egde_plus_vertex(self, mesh, best_n):
+        '''Searching normals or random edges with one vertice'''
+        orient = dict()
+        vcount = len(mesh)
+        if vcount < 40000: small = True
+        else: small = False
+        for i in range(vcount):
+            if i%3 == 0:
+                v = mesh[i]
+                w = mesh[i+1]
+        # Skip these cases if file is big due to performance issues.
+            elif small:
+                if i%3 == 1:
+                    v = mesh[i]
+                    w = mesh[i+1]
+                else:
+                    v = mesh[i]
+                    w = mesh[i-2]
+            else:
+                continue
+            
+            for c in range(5):   
+                r_v = random.choice(mesh)
+                v = [v[0]-r_v[0], v[1]-r_v[1], v[2]-r_v[2]]
+                w = [w[0]-r_v[0], w[1]-r_v[1], w[2]-r_v[2]]
+                a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
+                n = math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
+                if n!=0:
+                    a="{:f} {:f} {:f}".format(a[0]/n, a[1]/n, a[2]/n)
+                    orient[a] = orient.get(a, 0) + 1
+        
+        nor = list()
+        for k,v in orient.items():
+            nor.append((v,k))
+            
+        nor.sort(reverse=True)
+        ret = list()
+        for k,v in nor[:best_n]:
+            a=[float(i) for i in v.split()]
+            ret.append([[a[0],a[1],a[2]],k])
+        return ret
 
-    def orientation(self,content,n):
+
+    def area_cumulation(self, content, n):
         '''Searching best options out of the objects area vector field'''
-        orient=[]
-        for li in content:       #Calculate areavectors
+        if self.bi_algorithmic: best_n = 6
+        else: best_n = 5
+        
+        orient = list()
+        for li in content:       # Cumulate areavectors
             an=li[0]
             norma=round(math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2]),8)
             
@@ -176,8 +254,8 @@ class Tweak:
                         if orien==0:
                            orient.append([an,A])
                            
-        # Use the 6 favored area vectors
-        r=[0,0,0,0,0,0][:len(orient)]
+        # Using n biggest area vectors, if enough orientations were found.
+        r=( [0]*best_n )[:len(orient)]
         for i in orient:
             if i[1] > min(r):
                 r.remove(min(r))
@@ -188,9 +266,8 @@ class Tweak:
         for c in r:
             for i in orient:
                 if c==i[1]:
-                    o.append(i)
+                    o.append([i[0], float("{:6f}".format(i[1]))])
                     break
-        #print("\nOrientation: \n" +str(o))
         return o
 
 

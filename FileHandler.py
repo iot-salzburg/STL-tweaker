@@ -18,7 +18,6 @@ class FileHandler:
                 mesh.append([float(data[0]), float(data[1]), float(data[2])])
         return mesh
 
-
     def loadBinarySTL(f):
         '''Reading mesh data from binary STL'''
         	#Skip the header
@@ -74,8 +73,6 @@ class FileHandler:
         tweaked += "\nendsolid %s\n" % filename
 
         return tweaked
-
-
     
     def getargs():
         parser = argparse.ArgumentParser(description=
@@ -89,8 +86,8 @@ class FileHandler:
         parser.add_argument('-a', '--angle', action="store", dest="angle", type=int,
                             default=45,
                             help="specify critical angle for overhang demarcation in degrees")
-        parser.add_argument('-f', '--fast', action="store_true", dest="fast", default=False,
-                            help="fast calculation")
+        parser.add_argument('-b', '--bi', action="store_true", dest="bi_algorithmic", default=False,
+                            help="using two algorithms for calculation")
         parser.add_argument('-v', '--version', action="store_true", dest="version",
                             help="print version number and exit", default=False)
         parser.add_argument('-r', '--result', action="store_true", dest="result",
@@ -99,21 +96,28 @@ class FileHandler:
         args = parser.parse_args()
 
         if args.version:
-            print("Tweaker 1.2.2, (10 Juli 2016)")
+            print("Tweaker 0.2.4, (7 August 2016)")
             return None
             
         if not args.inputfile:   
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
- 
+#            args.inputfile=curpath + os.sep + "kugel_konisch2.stl" ###TODO
+
+            
+    
         if not args.outputfile:
             args.outputfile = os.path.splitext(args.inputfile)[0] + "_tweaked" 
             args.outputfile += os.path.splitext(args.inputfile)[1].lower()
-        
-        
+               
         argv = sys.argv[1:]
         if len(argv)==0:
-            print("No additional arguments found. Testing calculation with demo object.")
+            print("""No additional arguments. Testing calculation with 
+demo object in verbose and bi-algorithmic mode. Use argument -h for help.
+""")
+            args.verbose = True
+            args.bi_algorithmic = True
+            
         elif os.path.splitext(args.inputfile)[1].lower() != ".stl":
             print("File type is not supported.")
             return None
@@ -131,9 +135,8 @@ if __name__ == "__main__":
             sys.exit()
     except:
         sys.exit()
-
                         
-    ## loading mesh format of the object
+    ## loading mesh format
     f=open(args.inputfile,"rb")
     if "solid" in str(f.read(5).lower()):
         f=open(args.inputfile,"r")
@@ -143,43 +146,46 @@ if __name__ == "__main__":
              mesh=FileHandler.loadBinarySTL(f)
     else:
         mesh=FileHandler.loadBinarySTL(f)
-    
-    
+       
     ## Start of tweaking.
-    if len(sys.argv)<=1 or args.verbose:
-        print("Calculating the optimal orientation: {}"
+    if args.verbose:
+        print("Calculating the optimal orientation:\n  {}\n"
                         .format(args.inputfile.split("\\")[-1]))
     try:
         cstime = time.time()
-        x=Tweak(mesh, args.angle)          
+        x=Tweak(mesh, args.bi_algorithmic, args.verbose, args.angle)          
     except (KeyboardInterrupt, SystemExit):
+        print("\nError, tweaking process failed!")
         raise
-    
-    
-    ## List some stats.
-    if args.result or len(sys.argv)<=1 or args.verbose:
-        print("\nAxis, angle: \t\t{v}, {phi}".format(v=x.v, phi=x.phi))
-        print("Tweaked Z-axis: \t"+str(x.Zn))
-        print("Rotation matrix: \t{}\n\t\t\t{}\n\t\t\t{}".format(x.R[0],x.R[1],x.R[2]))
-        print("Unprintability: \t"+str(x.Unprintability))
-        if args.result: sys.exit()   
-        print("\nTime needed for calculation: {}".format(time.time()-cstime))
-    
-    
-    ## Writing the content of the tweaked file
+        
+    ## List tweaking results
+    if args.result or args.verbose:
+        print("\nResult-stats:")
+        print(" Axis, angle:   \t{v}, {phi}".format(v=x.v, phi=x.phi))
+        print(" Tweaked Z-axis: \t{}".format((x.Zn)))
+        print(""" Rotation matrix: 
+    {:2f}\t{:2f}\t{:2f}
+    {:2f}\t{:2f}\t{:2f}
+    {:2f}\t{:2f}\t{:2f}""".format(*x.R[0], *x.R[1], *x.R[2]))
+        print(" Unprintability: \t{}".format(x.Unprintability))
+        
+        print("\nFound result:  \t{:2f} s".format(time.time()-cstime))
+        if args.result: 
+            sys.exit()   
+        
+    ## Creating tweaked output file
     if x.Zn==[0,0,1]:
         tweakedcontent=mesh
     else:
         tweakedcontent=FileHandler.rotate(x.R, mesh, args.inputfile)
-    
-    if x.Unprintability > 12:
-        tweakedcontent+=" {supportstructure:yes}"
-    
-    ## Create the tweaked output file
+        
+    if x.Unprintability > 12:  
+        # Support structure suggestion can be used for further applications
+        tweakedcontent+=" {supportstructure: yes}"
     with open(args.outputfile,'w') as outfile:
         outfile.write(tweakedcontent)
         
     ## Success message
-    if len(sys.argv)<=1 or args.verbose:
-        print("Time needed for rotation: {}".format(time.time()-stime))
-        print("Successfully Rotated!")
+    if args.verbose:
+        print("Tweaking took:  \t{:2f} s".format(time.time()-stime))
+        print("\nSuccessfully Rotated!")

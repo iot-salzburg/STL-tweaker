@@ -186,7 +186,7 @@ Time-stats of algorithm:
                     an=min([a1,a2,a3])
 
                     ali=round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2,6)
-                    if an > amin+0.5: #0.3:
+                    if an > amin+0.25:
                         Overhang+=ali
                     else:
                         Grundfl+=ali

@@ -60,32 +60,35 @@ class Tweak:
             
             if bi_algorithmic:
                 dialg_time = time.time()
-                o += self.egde_plus_vertex(mesh, 6)
-                dialg_time = time.time() - dialg_time          
+                o += self.egde_plus_vertex(mesh, 12)
+                dialg_time = time.time() - dialg_time
+                
+                o = self.remove_duplicates(o)
+      
                 
             if verbose:
                 print("Examine {} orientations:".format(len(o)))
-                for orient in o:
-                    print("  "+str(orient[0]))
+                print("  %-32s \tTouching Area:\t\tOverhang:\t\tUnprintability" %("Area Vector:"))
                 
             # Calculate the printability of each orientation
             lit_time = time.time()
+            Unprintability=sys.maxsize
             for side in o:
                 sn = [float("{:6f}".format(-i)) for i in side[0]]
                 ## vector: sn, cum_A: side[1]
                 amin=self.approachvertex(content, side[0])
                 ret=self.lithograph(content, sn, amin, CA)
                 liste.append([sn, ret[0], ret[1]])   #[Vector, touching area, Overhang]
-           
-            ## Calculating best option
-            Unprintability=sys.maxsize
-            for i in liste:
+                
                 # target function
-                F = self.target_function(i[1], i[2]) # touching area: i[1], overhang: i[2]
+                F = self.target_function(ret[0], ret[1]) # touching area: i[1], overhang: i[2]
                 if F<Unprintability- 0.2:
                     Unprintability=F
-                    bestside=i
+                    bestside = [sn, ret[0], ret[1]]
                 if Unprintability<1: Unprintability=1
+
+                if verbose:
+                    print("  %-32s \t{:2f}\t\t{:2f}\t\t{:2f}".format(ret[0], ret[1], F) %str(sn))
                     
             lit_time = time.time() - lit_time
         
@@ -111,7 +114,7 @@ Time-stats of algorithm:
 
     def target_function(self, touching, overhang):
         '''This function returns the printability with the touching area and overhang given.'''
-        ABSLIMIT=80             # Some values for scaling the printability
+        ABSLIMIT=100             # Some values for scaling the printability
         RELLIMIT=1
         F = (overhang/ABSLIMIT) + (overhang/touching/RELLIMIT)
         
@@ -213,7 +216,7 @@ Time-stats of algorithm:
                 a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
                 n = math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
                 if n!=0:
-                    a="{:f} {:f} {:f}".format(a[0]/n, a[1]/n, a[2]/n)
+                    a="{:2f} {:2f} {:2f}".format(a[0]/n, a[1]/n, a[2]/n)
                     orient[a] = orient.get(a, 0) + 1
         
         nor = list()
@@ -223,14 +226,15 @@ Time-stats of algorithm:
         nor.sort(reverse=True)
         ret = list()
         for k,v in nor[:best_n]:
-            a=[float(i) for i in v.split()]
-            ret.append([[a[0],a[1],a[2]],k])
+            a=[float("{:2f}".format(float(i))) for i in v.split()]
+            ret.append([a, k])
+            #ret.append([[a[0],a[1],a[2]],k])
         return ret
 
 
     def area_cumulation(self, content, n):
         '''Searching best options out of the objects area vector field'''
-        if self.bi_algorithmic: best_n = 6
+        if self.bi_algorithmic: best_n = 7
         else: best_n = 5
         
         orient = list()
@@ -239,7 +243,7 @@ Time-stats of algorithm:
             norma=round(math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2]),8)
             
             if norma!=0:
-                an=[round(i/norma+0, 5) for i in an]
+                an = [float("{:2f}".format(i/norma)) for i in an]
                 if an!=n:
                     v=[li[2][0]-li[1][0], li[2][1]-li[1][1], li[2][2]-li[1][2]]
                     w=[li[2][0]-li[3][0], li[2][1]-li[3][1], li[2][2]-li[3][2]]
@@ -266,13 +270,30 @@ Time-stats of algorithm:
         for c in r:
             for i in orient:
                 if c==i[1]:
-                    o.append([i[0], float("{:6f}".format(i[1]))])
+                    o.append([i[0], float("{:2f}".format(i[1]))])
                     break
         return o
 
 
+    def remove_duplicates(self, o):
+        '''Removing duplicates in orientation'''
+        orientations = list()
+        for i in o:
+            duplicate = None
+            for j in orientations:
+                dif = math.sqrt( (i[0][0]-j[0][0])**2 + (i[0][1]-j[0][1])**2 + (i[0][2]-j[0][2])**2 )
+                if dif < 0.001:
+                    duplicate = True
+                    break
+                    
+            if duplicate is None:
+                orientations.append(i)
+         
+        return orientations
+
+    
     def euler(self, bestside):
-        '''Calculating euler params and rotational matrix'''
+        '''Calculating euler params and rotation matrix'''
         if bestside[0] == [0, 0, -1]:
             v = [1, 0, 0]
             phi = math.pi
@@ -280,10 +301,10 @@ Time-stats of algorithm:
             v=[1,0,0]
             phi=0
         else:
-            phi = float("{:f}".format(math.pi - math.acos( -bestside[0][2] )))
+            phi = float("{:2f}".format(math.pi - math.acos( -bestside[0][2] )))
             v = [-bestside[0][1] , bestside[0][0], 0]
             v = [i / math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]) for i in v]
-            v = [float("{:f}".format(i)) for i in v]
+            v = [float("{:2f}".format(i)) for i in v]
 
         R = [[v[0] * v[0] * (1 - math.cos(phi)) + math.cos(phi),
               v[0] * v[1] * (1 - math.cos(phi)) - v[2] * math.sin(phi),
@@ -295,6 +316,6 @@ Time-stats of algorithm:
               v[2] * v[1] * (1 - math.cos(phi)) + v[0] * math.sin(phi),
               v[2] * v[2] * (1 - math.cos(phi)) + math.cos(phi)]]
 
-        R = [[float("{:6f}".format(val)) for val in row] for row in R] 
+        R = [[float("{:2f}".format(val)) for val in row] for row in R] 
         
         return [v,phi,R]

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
 
-## You can preset the default model in line 104
+## You can preset the default model in line 106
 
 import sys, argparse
 import os
@@ -105,7 +105,6 @@ class FileHandler:
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
             #args.inputfile=curpath + os.sep + "kugel_konisch.stl"
-
             
     
         if not args.outputfile:
@@ -148,7 +147,7 @@ if __name__ == "__main__":
              mesh=FileHandler.loadBinarySTL(f)
     else:
         mesh=FileHandler.loadBinarySTL(f)
-       
+        
     ## Start of tweaking.
     if args.verbose:
         print("Calculating the optimal orientation:\n  {}\n"
@@ -178,16 +177,15 @@ if __name__ == "__main__":
             sys.exit()   
         
     ## Creating tweaked output file
-    if x.Zn==[0,0,1]:
-        tweakedcontent=mesh
-    else:
-        tweakedcontent=FileHandler.rotate(x.R, mesh, args.inputfile)
+    tweakedcontent=FileHandler.rotate(x.R, mesh, args.inputfile)
   
     # Support structure suggestion can be used for further applications        
     if x.Unprintability > 8:
         tweakedcontent+=" {supportstructure: yes}"
+        
     with open(args.outputfile,'w') as outfile:
         outfile.write(tweakedcontent)
+
         
     ## Success message
     if args.verbose:

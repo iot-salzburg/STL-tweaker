@@ -1,6 +1,8 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
 
+## You can preset the default model in line 104
+
 import sys, argparse
 import os
 import struct
@@ -96,13 +98,13 @@ class FileHandler:
         args = parser.parse_args()
 
         if args.version:
-            print("Tweaker 0.2.4, (7 August 2016)")
+            print("Tweaker 0.2.5, (9 August 2016)")
             return None
             
         if not args.inputfile:   
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
-#            args.inputfile=curpath + os.sep + "kugel_konisch.stl"
+            #args.inputfile=curpath + os.sep + "kugel_konisch.stl"
 
             
     
@@ -161,8 +163,8 @@ if __name__ == "__main__":
     ## List tweaking results
     if args.result or args.verbose:
         print("\nResult-stats:")
-        print(" Axis, angle:   \t{v}, {phi}".format(v=x.v, phi=x.phi))
         print(" Tweaked Z-axis: \t{}".format((x.Zn)))
+        print(" Axis, angle:   \t{v}, {phi}".format(v=x.v, phi=x.phi))
         print(""" Rotation matrix: 
     {:2f}\t{:2f}\t{:2f}
     {:2f}\t{:2f}\t{:2f}
@@ -180,9 +182,9 @@ if __name__ == "__main__":
         tweakedcontent=mesh
     else:
         tweakedcontent=FileHandler.rotate(x.R, mesh, args.inputfile)
-        
-    if x.Unprintability > 12:  
-        # Support structure suggestion can be used for further applications
+  
+    # Support structure suggestion can be used for further applications        
+    if x.Unprintability > 8:
         tweakedcontent+=" {supportstructure: yes}"
     with open(args.outputfile,'w') as outfile:
         outfile.write(tweakedcontent)

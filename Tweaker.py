@@ -39,17 +39,22 @@ class Tweak:
         n=[0,0,-1]              # default normal vector
         
         content=self.arrange_mesh(mesh)
-        
+        arcum_time=dialg_time=lit_time=0
+                
         ## Calculating initial printability
         amin=self.approachfirstvertex(content)
         lit=self.lithograph(content,[0,0,1],amin,CA)
         liste=[[[0,0,1],lit[0], lit[1]]]
         ## vector: , groundA: , OverhangA: %s", liste[0]
 
+
         if self.target_function(liste[0][1], liste[0][2]) < 1:
             ## The default orientation is alright!
             bestside=liste[0]
             Unprintability=1.0
+            if verbose:
+                print("Default orientation is alright")
+
         else:
             ## The default orientation is not perfect.
             ## Searching promising orientations: 
@@ -65,7 +70,6 @@ class Tweak:
                 
                 o = self.remove_duplicates(o)
       
-                
             if verbose:
                 print("Examine {} orientations:".format(len(o)))
                 print("  %-32s \tTouching Area:\t\tOverhang:\t\tUnprintability" %("Area Vector:"))
@@ -182,7 +186,7 @@ Time-stats of algorithm:
                     an=min([a1,a2,a3])
 
                     ali=round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2,6)
-                    if an>amin+0.3:
+                    if an > amin+0.5: #0.3:
                         Overhang+=ali
                     else:
                         Grundfl+=ali

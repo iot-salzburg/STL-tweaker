@@ -7,8 +7,10 @@ Author: Christoph Schranz, 12.01.2016
 
 ## Quickstart:  
 
-`python FileHandler.py -i yourobject.stl -b -vb`
+`python Tweaker.py -i yourobject.stl -b -vb`
+
 or (Windows):
+
 `Tweaker.exe -i yourobject.stl -b -vb`
 
 ## Find more options:

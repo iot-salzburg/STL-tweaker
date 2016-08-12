@@ -1,5 +1,5 @@
-# STL-tweaker
-##The STL-tweaker is an auto-rotate module which finds the STL object's optimal orientation on the printing platform to improve the efficiency of the 3D print.
+# Tweaker
+##The Tweaker is an auto-rotate module which finds the STL or 3mf object's optimal orientation on the printing platform to improve the efficiency of the 3D print.
 
 Author: Christoph Schranz, 12.01.2016 
 
@@ -8,6 +8,8 @@ Author: Christoph Schranz, 12.01.2016
 ## Quickstart:  
 
 `python FileHandler.py -i yourobject.stl -b -vb`
+or (Windows):
+`Tweaker.exe -i yourobject.stl -b -vb`
 
 ## Find more options:
 `python FileHandler.py -h`

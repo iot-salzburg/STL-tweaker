@@ -7,10 +7,40 @@ import sys, argparse
 import os
 import struct
 import time
-from Tweaker import Tweak
+import zipfile
+import xml.etree.ElementTree as ET
 
 
-class FileHandler:      
+class FileHandler:
+    def __init__(self, inputfile):
+        return None
+        
+    def loadMesh(inputfile):
+        '''load meshs and object attributes from file'''
+        ## loading mesh format
+        
+        filetype = os.path.splitext(inputfile)[1].lower()
+        if filetype == ".stl":
+            f=open(inputfile,"rb")
+            if "solid" in str(f.read(5).lower()):
+                f=open(inputfile,"r")
+                mesh=FileHandler.loadAsciiSTL(f)
+                if len(mesh) < 3:
+                     f.seek(5, os.SEEK_SET)
+                     mesh=FileHandler.loadBinarySTL(f)
+            else:
+                mesh=FileHandler.loadBinarySTL(f)
+                
+        elif filetype == ".3mf":
+            objs = FileHandler.load3mf(inputfile)
+            mesh = objs[0][0]
+        else:
+            print("File type is not supported.")
+            sys.exit()
+            
+        return mesh
+
+
     def loadAsciiSTL(f):
         '''Reading mesh data from ascii STL'''
         mesh=list()
@@ -34,6 +64,82 @@ class FileHandler:
         #print("binary mesh {} {}".format(faceCount, len(mesh)))
         return mesh
 
+    def load3mf(f):
+        '''load parts of the 3mf with their properties'''
+        namespace = {
+            "3mf": "http://schemas.microsoft.com/3dmanufacturing/core/2015/02",
+            "m" : "http://schemas.microsoft.com/3dmanufacturing/material/2015/02"
+        }
+        # The base object of 3mf is a zipped archive.
+        archive = zipfile.ZipFile(f, "r")
+        try:
+            root = ET.parse(archive.open("3D/3dmodel.model"))
+
+            # There can be multiple objects, try to load all of them.
+            objects = root.findall("./3mf:resources/3mf:object", namespace)
+            if len(objects) == 0:
+                print("No objects found in 3MF file %s, either the file is corrupt or you are using an outdated format", file_name)
+                return None
+            
+            obj_meshs = list()
+            c=0
+            for obj in objects:
+                vertex_list = []
+                obj_meshs.append([[],dict()])
+                #for vertex in object.mesh.vertices.vertex:
+                for vertex in obj.findall(".//3mf:vertex", namespace):
+                    vertex_list.append([vertex.get("x"), vertex.get("y"), vertex.get("z")])
+                    
+                triangles = obj.findall(".//3mf:triangle", namespace)
+                #for triangle in object.mesh.triangles.triangle:
+                for triangle in triangles:
+                    v1 = int(triangle.get("v1"))
+                    v2 = int(triangle.get("v2"))
+                    v3 = int(triangle.get("v3"))
+                    obj_meshs[c][0].append([float(vertex_list[v1][0]),float(vertex_list[v1][1]),float(vertex_list[v1][2])])
+                    obj_meshs[c][0].append([float(vertex_list[v2][0]),float(vertex_list[v2][1]),float(vertex_list[v2][2])])
+                    obj_meshs[c][0].append([float(vertex_list[v3][0]),float(vertex_list[v3][1]),float(vertex_list[v3][2])])
+
+                transformation = root.findall("./3mf:build/3mf:item[@objectid='{0}']".format(obj.get("id")), namespace)
+                if transformation:
+                    transformation = transformation[0]
+                try:
+                    if transformation.get("transform"):
+                        splitted_transformation = transformation.get("transform").split()
+                        R = [[float(splitted_transformation[0]), float(splitted_transformation[1]), float(splitted_transformation[2])],
+                            [float(splitted_transformation[3]), float(splitted_transformation[4]), float(splitted_transformation[5])],
+                            [float(splitted_transformation[6]), float(splitted_transformation[7]), float(splitted_transformation[8])]]
+                        obj_meshs[c][1]["Rotation"] = R
+                        
+                except AttributeError:
+                    pass # Empty list was found. Getting transformation is not possible
+
+                try:
+                    color_list = list()
+                    colors = root.findall('.//m:color', namespace)
+                    if colors:
+                        for color in colors:
+                            color_list.append(color.get("color",0))
+                        obj_meshs[c][1]["color"] = color_list
+                except AttributeError:
+                    pass # Empty list was found. Getting transformation is not possible
+   
+                c=c+1
+##            #If there is more then one object, group them.
+##            try:
+##                if len(objects) > 1:
+##                    group_decorator = GroupDecorator()
+##                    result.addDecorator(group_decorator)
+##            except:
+##                pass
+                
+        except Exception as e:
+            print("exception occured in 3mf reader: %s" % e)
+            return None
+        #print(obj_meshs[0][0])
+        return obj_meshs
+
+            
     def rotate(R, content, filename):
         '''Rotate the object and save as ascii STL'''
         face=[]
@@ -75,119 +181,3 @@ class FileHandler:
         tweaked += "\nendsolid %s\n" % filename
 
         return tweaked
-    
-    def getargs():
-        parser = argparse.ArgumentParser(description=
-                "Orientation tool for better 3D prints")
-        parser.add_argument('-vb', '--verbose', action="store_true",dest="verbose", 
-                            help="increase output verbosity", default=False)
-        parser.add_argument('-i', action="store",  
-                            dest="inputfile", help="select input file")
-        parser.add_argument('-o', action="store", dest="outputfile",
-                            help="select output file. '_tweaked' is postfix by default")
-        parser.add_argument('-a', '--angle', action="store", dest="angle", type=int,
-                            default=45,
-                            help="specify critical angle for overhang demarcation in degrees")
-        parser.add_argument('-b', '--bi', action="store_true", dest="bi_algorithmic", default=False,
-                            help="using two algorithms for calculation")
-        parser.add_argument('-v', '--version', action="store_true", dest="version",
-                            help="print version number and exit", default=False)
-        parser.add_argument('-r', '--result', action="store_true", dest="result",
-                            help="show result of calculation and exit without creating output file",
-                            default=False)                            
-        args = parser.parse_args()
-
-        if args.version:
-            print("Tweaker 0.2.5, (9 August 2016)")
-            return None
-            
-        if not args.inputfile:   
-            curpath = os.path.dirname(os.path.realpath(__file__))
-            args.inputfile=curpath + os.sep + "demo_object.stl"
-            #args.inputfile=curpath + os.sep + "kugel_konisch.stl"
-            
-    
-        if not args.outputfile:
-            args.outputfile = os.path.splitext(args.inputfile)[0] + "_tweaked" 
-            args.outputfile += os.path.splitext(args.inputfile)[1].lower()
-               
-        argv = sys.argv[1:]
-        if len(argv)==0:
-            print("""No additional arguments. Testing calculation with 
-demo object in verbose and bi-algorithmic mode. Use argument -h for help.
-""")
-            args.verbose = True
-            args.bi_algorithmic = True
-            
-        elif os.path.splitext(args.inputfile)[1].lower() != ".stl":
-            print("File type is not supported.")
-            return None
-                
-        return args
-
-
-if __name__ == "__main__":
-    ## Get the command line arguments. If no arguments were found
-    ## a demo object file will be tweaked.
-    stime=time.time()
-    try:
-        args = FileHandler.getargs()
-        if args is None:
-            sys.exit()
-    except:
-        sys.exit()
-                        
-    ## loading mesh format
-    f=open(args.inputfile,"rb")
-    if "solid" in str(f.read(5).lower()):
-        f=open(args.inputfile,"r")
-        mesh=FileHandler.loadAsciiSTL(f)
-        if len(mesh) < 3:
-             f.seek(5, os.SEEK_SET)
-             mesh=FileHandler.loadBinarySTL(f)
-    else:
-        mesh=FileHandler.loadBinarySTL(f)
-        
-    ## Start of tweaking.
-    if args.verbose:
-        print("Calculating the optimal orientation:\n  {}\n"
-                        .format(args.inputfile.split("\\")[-1]))
-    try:
-        cstime = time.time()
-        x=Tweak(mesh, args.bi_algorithmic, args.verbose, args.angle)          
-    except (KeyboardInterrupt, SystemExit):
-        print("\nError, tweaking process failed!")
-        raise
-        
-    ## List tweaking results
-    if args.result or args.verbose:
-        print("\nResult-stats:")
-        print(" Tweaked Z-axis: \t{}".format((x.Zn)))
-        print(" Axis, angle:   \t{v}, {phi}".format(v=x.v, phi=x.phi))
-        print(""" Rotation matrix: 
-    {:2f}\t{:2f}\t{:2f}
-    {:2f}\t{:2f}\t{:2f}
-    {:2f}\t{:2f}\t{:2f}""".format(x.R[0][0], x.R[0][1], x.R[0][2],
-                                  x.R[1][0], x.R[1][1], x.R[1][2], 
-                                  x.R[2][0], x.R[2][1], x.R[2][2]))
-        print(" Unprintability: \t{}".format(x.Unprintability))
-        
-        print("\nFound result:    \t{:2f} s".format(time.time()-cstime))
-        if args.result: 
-            sys.exit()   
-        
-    ## Creating tweaked output file
-    tweakedcontent=FileHandler.rotate(x.R, mesh, args.inputfile)
-  
-    # Support structure suggestion can be used for further applications        
-    if x.Unprintability > 8:
-        tweakedcontent+=" {supportstructure: yes}"
-        
-    with open(args.outputfile,'w') as outfile:
-        outfile.write(tweakedcontent)
-
-        
-    ## Success message
-    if args.verbose:
-        print("Tweaking took:  \t{:2f} s".format(time.time()-stime))
-        print("\nSuccessfully Rotated!")

@@ -7,11 +7,11 @@ Author: Christoph Schranz, 12.01.2016
 
 ## Quickstart:  
 
-`python Tweaker.py -i yourobject.stl -b -vb`
+`python Tweaker.py -i yourobject.stl -vb`
 
 or (Windows):
 
-`Tweaker.exe -i yourobject.stl -b -vb`
+`Tweaker.exe -i yourobject.stl -vb`
 
 ## Find more options:
 `python FileHandler.py -h`

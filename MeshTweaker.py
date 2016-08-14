@@ -5,9 +5,10 @@ import sys
 import math
 import random
 import time
+import multiprocessing
 
 class Tweak:
-    """ The Tweaker is an auto rotate class for 3D objects.
+    """ The Tweaker is an auto rotate function for 3D objects.
     It requires following mesh format as input:
      [[v1x,v1y,v1z],
       [v2x,v2y,v2z],
@@ -30,16 +31,14 @@ class Tweak:
     And the relative unprintability of the tweaked object. If this value is
      greater than 15, a support structure is suggested.
         """
-    def __init__(self, mesh, bi_algorithmic, verbose, CA=45):
+    def __init__(self, mesh, parallel_mode, verbose, CA=45):
+        self.workflow(mesh, parallel_mode, verbose, CA)
         
-        self.bi_algorithmic = bi_algorithmic
-        self.workflow(mesh, bi_algorithmic, verbose, CA)
         
-    def workflow(self, mesh, bi_algorithmic, verbose, CA):
+    def workflow(self, mesh, parallel_mode, verbose, CA):
         n=[0,0,-1]              # default normal vector
-        
+        tot_time = time.time()
         content=self.arrange_mesh(mesh)
-        arcum_time=dialg_time=lit_time=0
                 
         ## Calculating initial printability
         amin=self.approachfirstvertex(content)
@@ -55,21 +54,26 @@ class Tweak:
             if verbose:
                 print("Default orientation is alright")
 
-        else:
-            ## The default orientation is not perfect.
-            ## Searching promising orientations: 
-            ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
-            arcum_time = time.time()
-            o=self.area_cumulation(content, n)
-            arcum_time = time.time() - arcum_time
+        else:            
+            alg_time = time.time()
+
+            commands = ((content, n, "area_cumulation"),
+                        (mesh, 12, "death_star"))
+
+            if parallel_mode:
+                # multiprocessing could be a cause for errors.
+                p = multiprocessing.Pool(2)
+                [o1, o2] = p.map(self.get_orientation, commands)
+            else:
+                o1 = self.get_orientation(commands[0])
+                o2 = self.get_orientation(commands[1])
             
-            if bi_algorithmic:
-                dialg_time = time.time()
-                o += self.egde_plus_vertex(mesh, 12)
-                dialg_time = time.time() - dialg_time
-                
-                o = self.remove_duplicates(o)
-      
+            for side in o2:
+                o1.append(side)
+            o = self.remove_duplicates(o1)
+            
+            alg_time = time.time() - alg_time
+            
             if verbose:
                 print("Examine {} orientations:".format(len(o)))
                 print("  %-32s \tTouching Area:\t\tOverhang:\t\tUnprintability" %("Area Vector:"))
@@ -97,13 +101,11 @@ class Tweak:
 
         if verbose:
             print("""
-Time-stats of algorithm:
-  Area Cumulation:  \t{ac:6f} s
-  Edge plus Vertex:  \t{da:6f} s
-  Lithography Time:  \t{lt:6f} s  
-  Total Time:        \t{tot:6f} s
-""".format(ac=arcum_time, da=dialg_time, lt=lit_time, 
-           tot=arcum_time + dialg_time + lit_time))  
+Time-stats:
+  Found Orientations in:  \t{fo:6f} s
+  Calculated Overhangs in:  \t{lt:6f} s  
+  Total Time:        \t\t{tot:6f} s""".format(fo=alg_time, lt=lit_time, 
+tot= time.time() - tot_time))  
            
            
         if bestside:
@@ -192,8 +194,20 @@ Time-stats of algorithm:
                         Grundfl+=ali
         return [Grundfl, Overhang]
 
-    def egde_plus_vertex(self, mesh, best_n):
+
+
+    def get_orientation(self, cmd): #obj, value, algorithm):
+        '''choose the algorithm for finding orientations'''
+        if cmd[2] == "area_cumulation":
+            orientation=self.area_cumulation(cmd[0], cmd[1])
+        else:
+            orientation = self.death_star(cmd[0], cmd[1])
+        return orientation
+
+
+    def death_star(self, mesh, best_n):
         '''Searching normals or random edges with one vertice'''
+        #st=time.time()
         orient = dict()
         vcount = len(mesh)
         if vcount < 40000: small = True
@@ -234,13 +248,14 @@ Time-stats of algorithm:
             a=[float("{:2f}".format(float(i))) for i in v.split()]
             ret.append([a, k])
             #ret.append([[a[0],a[1],a[2]],k])
+        #print("Deathstar in {}".format(time.time()-st))
         return ret
 
 
     def area_cumulation(self, content, n):
         '''Searching best options out of the objects area vector field'''
-        if self.bi_algorithmic: best_n = 7
-        else: best_n = 5
+        #st=time.time()
+        best_n = 6
         
         orient = list()
         for li in content:       # Cumulate areavectors
@@ -277,6 +292,7 @@ Time-stats of algorithm:
                 if c==i[1]:
                     o.append([i[0], float("{:2f}".format(i[1]))])
                     break
+        #print("Area cumulation in {}".format(time.time()-st))
         return o
 
 

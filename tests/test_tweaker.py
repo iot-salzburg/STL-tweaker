@@ -7,7 +7,7 @@ def test_area_cumulation():
     test_file = os.path.join(os.path.dirname(__file__), 'test_object.stl')
     mesh = FileHandler.loadMesh(test_file)
 
-    tweaker = Tweak(mesh=mesh, bi_algorithmic=True, verbose=False)
+    tweaker = Tweak(mesh=mesh, parallel_mode=False, verbose=False)
 
     # setup tweaker
     content = tweaker.arrange_mesh(mesh)

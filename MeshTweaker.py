@@ -1,11 +1,13 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
-
+import operator
 import sys
 import math
 import random
 import time
 import multiprocessing
+from collections import defaultdict
+
 
 class Tweak:
     """ The Tweaker is an auto rotate function for 3D objects.
@@ -254,10 +256,9 @@ tot= time.time() - tot_time))
 
     def area_cumulation(self, content, n):
         '''Searching best options out of the objects area vector field'''
-        #st=time.time()
         best_n = 6
         
-        orient = list()
+        orient = defaultdict(lambda: 0)
         for li in content:       # Cumulate areavectors
             an=li[0]
             norma=round(math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2]),8)
@@ -270,30 +271,11 @@ tot= time.time() - tot_time))
                     x=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
                     A=round(math.sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2])/2, 4)
                     if A>0.5: # Smaller areas don't worry 
-                        orien=0
-                        for i in orient:
-                            if i[0]==an:
-                                i[1]+=A
-                                orien=1
-                        if orien==0:
-                           orient.append([an,A])
-                           
-        # Using n biggest area vectors, if enough orientations were found.
-        r=( [0]*best_n )[:len(orient)]
-        for i in orient:
-            if i[1] > min(r):
-                r.remove(min(r))
-                r.append(i[1])
-        o=[]
-        for i in range(r.count(0)):
-            r=r.remove(0)
-        for c in r:
-            for i in orient:
-                if c==i[1]:
-                    o.append([i[0], float("{:2f}".format(i[1]))])
-                    break
-        #print("Area cumulation in {}".format(time.time()-st))
-        return o
+                        orient[tuple(an)] += A
+
+        sorted_by_area = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
+        top_n = sorted_by_area[:best_n]
+        return [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
 
 
     def remove_duplicates(self, o):

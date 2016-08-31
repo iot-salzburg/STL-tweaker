@@ -5,10 +5,11 @@ import sys
 import math
 import random
 import time
-import multiprocessing
+import operator
+from collections import defaultdict
 
 class Tweak:
-    """ The Tweaker is an auto rotate function for 3D objects.
+    """ The Tweaker is an auto rotate class for 3D objects.
     It requires following mesh format as input:
      [[v1x,v1y,v1z],
       [v2x,v2y,v2z],
@@ -31,14 +32,16 @@ class Tweak:
     And the relative unprintability of the tweaked object. If this value is
      greater than 15, a support structure is suggested.
         """
-    def __init__(self, mesh, parallel_mode, verbose, CA=45):
-        self.workflow(mesh, parallel_mode, verbose, CA)
+    def __init__(self, mesh, bi_algorithmic, verbose, CA=45):
         
+        self.bi_algorithmic = bi_algorithmic
+        self.workflow(mesh, bi_algorithmic, verbose, CA)
         
-    def workflow(self, mesh, parallel_mode, verbose, CA):
+    def workflow(self, mesh, bi_algorithmic, verbose, CA):
         n=[0,0,-1]              # default normal vector
-        tot_time = time.time()
+        
         content=self.arrange_mesh(mesh)
+        arcum_time=dialg_time=lit_time=0
                 
         ## Calculating initial printability
         amin=self.approachfirstvertex(content)
@@ -54,26 +57,21 @@ class Tweak:
             if verbose:
                 print("Default orientation is alright")
 
-        else:            
-            alg_time = time.time()
-
-            commands = ((content, n, "area_cumulation"),
-                        (mesh, 12, "death_star"))
-
-            if parallel_mode:
-                # multiprocessing could be a cause for errors.
-                p = multiprocessing.Pool(2)
-                [o1, o2] = p.map(self.get_orientation, commands)
-            else:
-                o1 = self.get_orientation(commands[0])
-                o2 = self.get_orientation(commands[1])
+        else:
+            ## The default orientation is not perfect.
+            ## Searching promising orientations: 
+            ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
+            arcum_time = time.time()
+            o=self.area_cumulation(content, n)
+            arcum_time = time.time() - arcum_time
             
-            for side in o2:
-                o1.append(side)
-            o = self.remove_duplicates(o1)
-            
-            alg_time = time.time() - alg_time
-            
+            if bi_algorithmic:
+                dialg_time = time.time()
+                o += self.egde_plus_vertex(mesh, 12) #alt_egde_plus_vertex(content, 12)
+                dialg_time = time.time() - dialg_time
+                
+                o = self.remove_duplicates(o)
+      
             if verbose:
                 print("Examine {} orientations:".format(len(o)))
                 print("  %-32s \tTouching Area:\t\tOverhang:\t\tUnprintability" %("Area Vector:"))
@@ -101,11 +99,13 @@ class Tweak:
 
         if verbose:
             print("""
-Time-stats:
-  Found Orientations in:  \t{fo:6f} s
-  Calculated Overhangs in:  \t{lt:6f} s  
-  Total Time:        \t\t{tot:6f} s""".format(fo=alg_time, lt=lit_time, 
-tot= time.time() - tot_time))  
+Time-stats of algorithm:
+  Area Cumulation:  \t{ac:6f} s
+  Edge plus Vertex:  \t{da:6f} s
+  Lithography Time:  \t{lt:6f} s  
+  Total Time:        \t{tot:6f} s
+""".format(ac=arcum_time, da=dialg_time, lt=lit_time, 
+           tot=arcum_time + dialg_time + lit_time))  
            
            
         if bestside:
@@ -194,40 +194,24 @@ tot= time.time() - tot_time))
                         Grundfl+=ali
         return [Grundfl, Overhang]
 
-
-
-    def get_orientation(self, cmd): #obj, value, algorithm):
-        '''choose the algorithm for finding orientations'''
-        if cmd[2] == "area_cumulation":
-            orientation=self.area_cumulation(cmd[0], cmd[1])
-        else:
-            orientation = self.death_star(cmd[0], cmd[1])
-        return orientation
-
-
-    def death_star(self, mesh, best_n):
+    def egde_plus_vertex(self, mesh, best_n):
         '''Searching normals or random edges with one vertice'''
-        #st=time.time()
         orient = dict()
         vcount = len(mesh)
-        if vcount < 40000: small = True
-        else: small = False
+        if vcount < 40000: it = 5
+        else: it = 2
         for i in range(vcount):
             if i%3 == 0:
                 v = mesh[i]
                 w = mesh[i+1]
-        # Skip these cases if file is big due to performance issues.
-            elif small:
-                if i%3 == 1:
-                    v = mesh[i]
-                    w = mesh[i+1]
-                else:
-                    v = mesh[i]
-                    w = mesh[i-2]
+            elif i%3 == 1:
+                v = mesh[i]
+                w = mesh[i+1]
             else:
-                continue
+                v = mesh[i]
+                w = mesh[i-2]
             
-            for c in range(5):   
+            for c in range(it):   
                 r_v = random.choice(mesh)
                 v = [v[0]-r_v[0], v[1]-r_v[1], v[2]-r_v[2]]
                 w = [w[0]-r_v[0], w[1]-r_v[1], w[2]-r_v[2]]
@@ -247,53 +231,34 @@ tot= time.time() - tot_time))
         for k,v in nor[:best_n]:
             a=[float("{:2f}".format(float(i))) for i in v.split()]
             ret.append([a, k])
-            #ret.append([[a[0],a[1],a[2]],k])
-        #print("Deathstar in {}".format(time.time()-st))
         return ret
+    
 
 
     def area_cumulation(self, content, n):
         '''Searching best options out of the objects area vector field'''
-        #st=time.time()
-        best_n = 6
+        if self.bi_algorithmic: best_n = 7
+        else: best_n = 5
         
-        orient = list()
+        orient = defaultdict(lambda: 0) #list()
         for li in content:       # Cumulate areavectors
-            an=li[0]
-            norma=round(math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2]),8)
+            an = li[0]
+            norma = math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2])
             
             if norma!=0:
                 an = [float("{:2f}".format(i/norma)) for i in an]
-                if an!=n:
-                    v=[li[2][0]-li[1][0], li[2][1]-li[1][1], li[2][2]-li[1][2]]
-                    w=[li[2][0]-li[3][0], li[2][1]-li[3][1], li[2][2]-li[3][2]]
-                    x=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
-                    A=round(math.sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2])/2, 4)
+                if an != n:
+                    v = [li[2][0]-li[1][0], li[2][1]-li[1][1], li[2][2]-li[1][2]]
+                    w = [li[2][0]-li[3][0], li[2][1]-li[3][1], li[2][2]-li[3][2]]
+                    x = [v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
+                    A = math.sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2])/2
                     if A>0.5: # Smaller areas don't worry 
-                        orien=0
-                        for i in orient:
-                            if i[0]==an:
-                                i[1]+=A
-                                orien=1
-                        if orien==0:
-                           orient.append([an,A])
-                           
-        # Using n biggest area vectors, if enough orientations were found.
-        r=( [0]*best_n )[:len(orient)]
-        for i in orient:
-            if i[1] > min(r):
-                r.remove(min(r))
-                r.append(i[1])
-        o=[]
-        for i in range(r.count(0)):
-            r=r.remove(0)
-        for c in r:
-            for i in orient:
-                if c==i[1]:
-                    o.append([i[0], float("{:2f}".format(i[1]))])
-                    break
-        #print("Area cumulation in {}".format(time.time()-st))
-        return o
+                        orient[tuple(an)] += A
+
+        sorted_by_area = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
+        top_n = sorted_by_area[:best_n]
+        return [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
+    
 
 
     def remove_duplicates(self, o):
@@ -309,8 +274,8 @@ tot= time.time() - tot_time))
                     
             if duplicate is None:
                 orientations.append(i)
-         
         return orientations
+
 
     
     def euler(self, bestside):

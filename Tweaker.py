@@ -1,10 +1,11 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
 
-## You can preset the default model in line 40
+## You can preset the default model in line 106
 
 import sys, argparse
 import os
+import struct
 import time
 from MeshTweaker import Tweak
 from FileHandler import FileHandler
@@ -22,6 +23,8 @@ def getargs():
     parser.add_argument('-a', '--angle', action="store", dest="angle", type=int,
                         default=45,
                         help="specify critical angle for overhang demarcation in degrees")
+    parser.add_argument('-b', '--bi', action="store_true", dest="bi_algorithmic", default=False,
+                        help="using two algorithms for calculation")
     parser.add_argument('-v', '--version', action="store_true", dest="version",
                         help="print version number and exit", default=False)
     parser.add_argument('-r', '--result', action="store_true", dest="result",
@@ -30,7 +33,7 @@ def getargs():
     args = parser.parse_args()
 
     if args.version:
-        print("Tweaker 0.2.8, (13 August 2016)")
+        print("Tweaker 0.2.7, (12 August 2016)")
         return None
         
     if not args.inputfile:
@@ -46,16 +49,14 @@ def getargs():
         args.outputfile = os.path.splitext(args.inputfile)[0] + "_tweaked" 
         args.outputfile += ".stl" #Because 3mf is not supported for output
 
-    
+
     argv = sys.argv[1:]
     if len(argv)==0:
         print("""No additional arguments. Testing calculation with 
-demo object in verbose mode. Use argument -h for help.
+demo object in verbose and bi-algorithmic mode. Use argument -h for help.
 """)
         args.verbose = True
-        args.parallel_mode = False
-    else: args.parallel_mode = True
-
+        args.bi_algorithmic = True
             
     return args
 
@@ -85,7 +86,7 @@ if __name__ == "__main__":
         
     try:
         cstime = time.time()
-        x=Tweak(mesh, args.parallel_mode, args.verbose, args.angle)          
+        x=Tweak(mesh, args.bi_algorithmic, args.verbose, args.angle)          
     except (KeyboardInterrupt, SystemExit):
         print("\nError, tweaking process failed!")
         raise

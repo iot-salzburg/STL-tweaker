@@ -1,8 +1,6 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
 
-## You can preset the default model in line 106
-
 import sys, os
 import struct
 import time

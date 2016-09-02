@@ -3,8 +3,7 @@
 
 ## You can preset the default model in line 106
 
-import sys, argparse
-import os
+import sys, os
 import struct
 import time
 import zipfile
@@ -61,7 +60,6 @@ class FileHandler:
             mesh.append([data[3], data[4], data[5]])
             mesh.append([data[6], data[7], data[8]])
             mesh.append([data[9], data[10], data[11]])
-        #print("binary mesh {} {}".format(faceCount, len(mesh)))
         return mesh
 
     def load3mf(f):
@@ -78,7 +76,7 @@ class FileHandler:
             # There can be multiple objects, try to load all of them.
             objects = root.findall("./3mf:resources/3mf:object", namespace)
             if len(objects) == 0:
-                print("No objects found in 3MF file %s, either the file is corrupt or you are using an outdated format", file_name)
+                print("No objects found in 3MF file %s, either the file is corrupt or you are using an outdated format", f)
                 return None
             
             obj_meshs = list()
@@ -139,45 +137,49 @@ class FileHandler:
         #print(obj_meshs[0][0])
         return obj_meshs
 
-            
-    def rotate(R, content, filename):
+
+    def rotateSTL(R, content, filename):
         '''Rotate the object and save as ascii STL'''
         face=[]
         mesh=[]
         i=0
-        for li in content:      
+
+        rotated_content=list(map(FileHandler.rotate_vert, content, [R]*len(content)))
+        
+        for li in rotated_content:      
             face.append(li)
             i+=1
             if i%3==0:
-                mesh.append([])
-                v=[face[1][0]-face[0][0],face[1][1]-face[0][1],face[1][2]-face[0][2]]
-                w=[face[2][0]-face[0][0],face[2][1]-face[0][1],face[2][2]-face[0][2]]
-                a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
-                mesh[int(i/3-1)]=[[round(i,6) for i in [a[0],a[1],a[2]]],face[0],face[1],face[2]]
+                mesh.append([face[0],face[1],face[2]])
                 face=[]
-        content=mesh
-            
-        tweaked = "solid %s" % filename
-        for li in content:
-            for vert in range(len(li)-1):
-                a=li[vert + 1]
-                # multiply vectors with rotational matrix R
-                li[vert + 1]=[a[0]*R[0][0]+a[1]*R[1][0]+a[2]*R[2][0],
+
+        mesh = map(FileHandler.calc_nomal, mesh)
+
+        tweaked = list("solid %s" % filename)
+        tweaked += list(map(FileHandler.write_facett, mesh))
+        tweaked.append("\nendsolid %s\n" % filename)
+        tweaked = "".join(tweaked)
+        
+        return tweaked
+
+    def rotate_vert(a,R):
+        return [a[0]*R[0][0]+a[1]*R[1][0]+a[2]*R[2][0],
                               a[0]*R[0][1]+a[1]*R[1][1]+a[2]*R[2][1],
                               a[0]*R[0][2]+a[1]*R[1][2]+a[2]*R[2][2]]
-            v=[li[1][0]-li[2][0], li[1][1]-li[2][1], li[1][2]-li[2][2]]
-            w=[li[1][0]-li[3][0], li[1][1]-li[3][1], li[1][2]-li[3][2]]
-            n=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
-
-            tweaked += """\nfacet normal %f %f %f
-    outer loop
-    vertex %f %f %f
-    vertex %f %f %f
-    vertex %f %f %f
-    endloop
-    endfacet""" % (n[0], n[1], n[2], li[1][0], li[1][1], li[1][2], li[2][0], li[2][1], li[2][2], li[3][0], li[3][1],
-               li[3][2])
+    def calc_nomal(face):
+        v=[face[1][0]-face[0][0],face[1][1]-face[0][1],face[1][2]-face[0][2]]
+        w=[face[2][0]-face[0][0],face[2][1]-face[0][1],face[2][2]-face[0][2]]
+        a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]        
+        return [[a[0],a[1],a[2]],face[0],face[1],face[2]]
     
-        tweaked += "\nendsolid %s\n" % filename
-
-        return tweaked
+    def write_facett(facett):
+        return"""\nfacet normal %f %f %f
+    outer loop
+        vertex %f %f %f
+        vertex %f %f %f
+        vertex %f %f %f
+    endloop
+endfacet""" % (facett[0][0], facett[0][1], facett[0][2], facett[1][0], 
+               facett[1][1], facett[1][2], facett[2][0], facett[2][1], 
+                facett[2][2], facett[3][0], facett[3][1], facett[3][2])
+        

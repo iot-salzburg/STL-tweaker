@@ -6,6 +6,7 @@ import math
 import random
 import time
 import operator
+import itertools
 from collections import defaultdict
 
 class Tweak:
@@ -32,78 +33,68 @@ class Tweak:
     And the relative unprintability of the tweaked object. If this value is
      greater than 15, a support structure is suggested.
         """
-    def __init__(self, mesh, bi_algorithmic, verbose, CA=45):
+    def __init__(self, mesh, bi_algorithmic, verbose, CA=45, n=[0,0,-1]):
         
         self.bi_algorithmic = bi_algorithmic
-        self.workflow(mesh, bi_algorithmic, verbose, CA)
+        self.workflow(mesh, bi_algorithmic, verbose, CA, n)
         
-    def workflow(self, mesh, bi_algorithmic, verbose, CA):
-        n=[0,0,-1]              # default normal vector
-        
-        content=self.arrange_mesh(mesh)
-        arcum_time=dialg_time=lit_time=0
+    def workflow(self, mesh, bi_algorithmic, verbose, CA, n):
+        content = self.arrange_mesh(mesh)
+        arcum_time = dialg_time = lit_time=0
                 
         ## Calculating initial printability
-        amin=self.approachfirstvertex(content)
-        lit=self.lithograph(content,[0,0,1],amin,CA)
-        liste=[[[0,0,1],lit[0], lit[1]]]
+        amin = self.approachfirstvertex(content)
+        lit  =self.lithograph(content,[0,0,1],amin,CA)
+        liste = [[[0,0,1],lit[0], lit[1]]]
         ## vector: , groundA: , OverhangA: %s", liste[0]
 
-
-        if self.target_function(liste[0][1], liste[0][2]) < 1:
-            ## The default orientation is alright!
-            bestside=liste[0]
-            Unprintability=1.0
-            if verbose:
-                print("Default orientation is alright")
-
-        else:
-            ## The default orientation is not perfect.
-            ## Searching promising orientations: 
-            ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
-            arcum_time = time.time()
-            o=self.area_cumulation(content, n)
-            arcum_time = time.time() - arcum_time
+        ## Searching promising orientations: 
+        ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
+        arcum_time = time.time()
+        orientatations = self.area_cumulation(content, n)
+        arcum_time = time.time() - arcum_time
+        
+        if bi_algorithmic:
+            dialg_time = time.time()
+            orientatations += self.egde_plus_vertex(mesh, 12) #alt_egde_plus_vertex(content, 12)
+            dialg_time = time.time() - dialg_time
             
-            if bi_algorithmic:
-                dialg_time = time.time()
-                o += self.egde_plus_vertex(mesh, 12) #alt_egde_plus_vertex(content, 12)
-                dialg_time = time.time() - dialg_time
-                
-                o = self.remove_duplicates(o)
-      
-            if verbose:
-                print("Examine {} orientations:".format(len(o)))
-                print("  %-32s \tTouching Area:\t\tOverhang:\t\tUnprintability" %("Area Vector:"))
-                
-            # Calculate the printability of each orientation
-            lit_time = time.time()
-            Unprintability=sys.maxsize
-            for side in o:
-                sn = [float("{:6f}".format(-i)) for i in side[0]]
-                ## vector: sn, cum_A: side[1]
-                amin=self.approachvertex(content, side[0])
-                ret=self.lithograph(content, sn, amin, CA)
-                liste.append([sn, ret[0], ret[1]])   #[Vector, touching area, Overhang]
-                
-                # target function
-                F = self.target_function(ret[0], ret[1]) # touching area: i[1], overhang: i[2]
-                if F<Unprintability- 0.05:
-                    Unprintability=F
-                    bestside = [sn, ret[0], ret[1]]
+            orientatations = self.remove_duplicates(orientatations)
+  
+        if verbose:
+            print("Examine {} orientations:".format(len(orientatations)))
+            print("  %-32s \tTouching Area:      Overhang:\tUnprintability:" %("Area Vector:"))
+            
+        # Calculate the printability of each orientation
+        lit_time = time.time()
+        Unprintability=sys.maxsize
+        for side in orientatations:
+            sn = [float("{:6f}".format(-i)) for i in side[0]]
+            ## vector: sn, cum_A: side[1]
+            amin=self.approachvertex(content, side[0])
+            ret=self.lithograph(content, sn, amin, CA)
+            liste.append([sn, ret[0], ret[1], ret[2]])   #[Vector, touching area, Overhang, Touching_Line]
+            
+            # target function
+            F = self.target_function(ret[0], ret[1], ret[2]) # touching area: i[1], overhang: i[2], touching line i[3]
+            if F<Unprintability- 0.05:
+                Unprintability=F
+                bestside = [sn, ret[0], ret[1]]
 
-                if verbose:
-                    print("  %-32s \t{:2f}\t\t{:2f}\t\t{:2f}".format(ret[0], ret[1], F) %str(sn))
-                    
-            lit_time = time.time() - lit_time
+            if verbose:
+                print("  %-32s \t{}      \t\t{}   \t{}".format(round(ret[0],3), 
+                      round(ret[1],3), round(F,3)) %str(sn))
+
+            
+        lit_time = time.time() - lit_time
 
         if verbose:
             print("""
 Time-stats of algorithm:
-  Area Cumulation:  \t{ac:6f} s
-  Edge plus Vertex:  \t{da:6f} s
-  Lithography Time:  \t{lt:6f} s  
-  Total Time:        \t{tot:6f} s
+  Area Cumulation:  \t{ac:2f} s
+  Edge plus Vertex:  \t{da:2f} s
+  Lithography Time:  \t{lt:2f} s  
+  Total Time:        \t{tot:2f} s
 """.format(ac=arcum_time, da=dialg_time, lt=lit_time, 
            tot=arcum_time + dialg_time + lit_time))  
            
@@ -118,12 +109,15 @@ Time-stats of algorithm:
         self.Zn=bestside[0]
         return None
 
-    def target_function(self, touching, overhang):
+
+
+    def target_function(self, touching, overhang, line):
         '''This function returns the printability with the touching area and overhang given.'''
         ABSLIMIT=100             # Some values for scaling the printability
         RELLIMIT=1
-        F = (overhang/ABSLIMIT) + (overhang/touching/RELLIMIT)
-        
+        LINE_FAKTOR = 0.5
+        touching_line = line * LINE_FAKTOR
+        F = (overhang/ABSLIMIT) + (overhang / (touching+touching_line) /RELLIMIT)
         ret = float("{:f}".format(F))
         return ret
         
@@ -170,70 +164,50 @@ Time-stats of algorithm:
                 amin=an
         return amin
 
-
+        
     def lithograph(self, content, n, amin, CA):
         '''Calculating touching areas and overhangs regarding the vector n'''
         Overhang=1
         alpha=-math.cos((90-CA)*math.pi/180)
         Grundfl=1
+        Touching_Length = 1
+        touching_height = amin+0.15
+        
+        normn=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
+        
         for li in content:
             a=li[0]
             norma=math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
-            normn=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
-            if norma>2:      
-                if alpha > (a[0]*n[0] +a[1]*n[1] +a[2]*n[2])/(norma*normn):
-                    a1=(li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2])/normn
-                    a2=(li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2])/normn
-                    a3=(li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2])/normn 
-                    an=min([a1,a2,a3])
+            if norma < 2:
+                continue
+            if alpha > (a[0]*n[0] +a[1]*n[1] +a[2]*n[2])/(norma*normn):
+                a1=(li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2])/normn
+                a2=(li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2])/normn
+                a3=(li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2])/normn 
+                an=min([a1,a2,a3])
+                ali=round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2, 4)
+                
+                if an > touching_height:
+                    Overhang += ali
+                else:
+                    Grundfl += ali
+                    Touching_Length += self.get_touching_line([a1,a2,a3], li, touching_height)
 
-                    ali=round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2,6)
-                    if an > amin+0.15:
-                        Overhang+=ali
-                    else:
-                        Grundfl+=ali
-        return [Grundfl, Overhang]
-
-    def egde_plus_vertex(self, mesh, best_n):
-        '''Searching normals or random edges with one vertice'''
-        orient = dict()
-        vcount = len(mesh)
-        if vcount < 40000: it = 5
-        else: it = 2
-        for i in range(vcount):
-            if i%3 == 0:
-                v = mesh[i]
-                w = mesh[i+1]
-            elif i%3 == 1:
-                v = mesh[i]
-                w = mesh[i+1]
-            else:
-                v = mesh[i]
-                w = mesh[i-2]
-            
-            for c in range(it):   
-                r_v = random.choice(mesh)
-                v = [v[0]-r_v[0], v[1]-r_v[1], v[2]-r_v[2]]
-                w = [w[0]-r_v[0], w[1]-r_v[1], w[2]-r_v[2]]
-                a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
-                n = math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
-                if n!=0:
-                    a="{:2f} {:2f} {:2f}".format(a[0]/n, a[1]/n, a[2]/n)
-                    orient[a] = orient.get(a, 0) + 1
-        
-        nor = list()
-        for k,v in orient.items():
-            if v >= 2:
-                nor.append((v,k))
-            
-        nor.sort(reverse=True)
-        ret = list()
-        for k,v in nor[:best_n]:
-            a=[float("{:2f}".format(float(i))) for i in v.split()]
-            ret.append([a, k])
-        return ret
+        return [Grundfl, Overhang, Touching_Length]
     
-
+    def get_touching_line(self, a, li, touching_height):
+        touch_lst = list()
+        for i in range(3):
+            if a[i] < touching_height:
+                touch_lst.append(li[1+i])
+        combs = list(itertools.combinations(touch_lst, 2))
+        if len(combs) <= 1:
+            return 0
+        length = 0
+        for p1, p2 in combs:
+            length += math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2 
+                                        + (p2[2]-p1[2])**2)
+        return length
 
     def area_cumulation(self, content, n):
         '''Searching best options out of the objects area vector field'''
@@ -252,13 +226,62 @@ Time-stats of algorithm:
                     w = [li[2][0]-li[3][0], li[2][1]-li[3][1], li[2][2]-li[3][2]]
                     x = [v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
                     A = math.sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2])/2
-                    if A>0.5: # Smaller areas don't worry 
+                    if A>0.01: # Smaller areas don't worry 
                         orient[tuple(an)] += A
 
         sorted_by_area = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
         top_n = sorted_by_area[:best_n]
         return [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
+       
+
+    def egde_plus_vertex(self, mesh, best_n):
+        '''Searching normals or random edges with one vertice'''
+        vcount = len(mesh)
+        # Small files need more calculations
+        if vcount < 10000: it = 5
+        elif vcount < 25000: it = 2
+        else: it = 1
+           
+        self.mesh = mesh
+        randlist = map(self.random_tri, list(range(vcount))*it)
     
+        lst = map(self.calc_random_normal, randlist)
+        lst = filter(lambda x: x is not None, lst)
+
+        orient = defaultdict(lambda: 0)
+
+        for an in lst:
+            orient[tuple(an)] += 1
+
+        sorted_by_rate = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
+        top_n = filter(lambda x: x[1]>2, sorted_by_rate[:best_n])
+        
+        return [[list(el[0]), el[1]] for el in top_n]
+
+    def calc_random_normal(self, points):
+        [v, w, r_v] = points
+        v = [v[0]-r_v[0], v[1]-r_v[1], v[2]-r_v[2]]
+        w = [w[0]-r_v[0], w[1]-r_v[1], w[2]-r_v[2]]
+        a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
+        n = math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
+        if n != 0:
+            return [float("{:2f}".format(i/n)) for i in a]
+        else:
+            return None
+            
+    def random_tri(self, i):
+        mesh=self.mesh
+        if i%3 == 0:
+            v = mesh[i]
+            w = mesh[i+1]
+        elif i%3 == 1:
+            v = mesh[i]
+            w = mesh[i+1]
+        else:
+            v = mesh[i]
+            w = mesh[i-2]
+        r_v = random.choice(mesh)
+        return [v,w,r_v]
 
 
     def remove_duplicates(self, o):

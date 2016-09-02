@@ -7,9 +7,9 @@ Author: Christoph Schranz, 12.01.2016
 
 ## Quickstart:  
 
-`python Tweaker.py -i yourobject.stl -vb`
+`python Tweaker.py -i yourobject.stl -b -vb`
 
-or (Windows):
+or (on Windows):
 
 `Tweaker.exe -i yourobject.stl -vb`
 

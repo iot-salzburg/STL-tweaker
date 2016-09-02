@@ -32,7 +32,7 @@ def getargs():
     args = parser.parse_args()
 
     if args.version:
-        print("Tweaker 0.2.7, (12 August 2016)")
+        print("Tweaker 0.2.9, (2 September 2016)")
         return None        
     if not args.inputfile:
         try:

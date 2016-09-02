@@ -106,9 +106,9 @@ if __name__ == "__main__":
     ## Creating tweaked output file
     tweakedcontent=FileHandler.rotateSTL(x.R, mesh, args.inputfile)
   
-    # Support structure suggestion can be used for further applications        
-    if x.Unprintability > 7:
-        tweakedcontent+=" {supportstructure: yes}"
+#    # Support structure suggestion can be used for further applications        
+#    if x.Unprintability > 7:
+#        tweakedcontent+=" {supportstructure: yes}"
         
     with open(args.outputfile,'w') as outfile:
         outfile.write(tweakedcontent)

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3.4
 # Author: Christoph Schranz, Salzburg Research
 
-## You can preset the default model in line 106
+## You can preset the default model in line 40
 
 import sys, argparse
 import os
-import struct
 import time
 from MeshTweaker import Tweak
 from FileHandler import FileHandler
@@ -34,8 +33,7 @@ def getargs():
 
     if args.version:
         print("Tweaker 0.2.7, (12 August 2016)")
-        return None
-        
+        return None        
     if not args.inputfile:
         try:
             curpath = os.path.dirname(os.path.realpath(__file__))
@@ -43,12 +41,10 @@ def getargs():
             #args.inputfile=curpath + os.sep + "kugel_konisch.stl"
             #args.inputfile=curpath + os.sep + "cylinder.3mf"
         except:
-            return None
-          
+            return None          
     if not args.outputfile:
         args.outputfile = os.path.splitext(args.inputfile)[0] + "_tweaked" 
         args.outputfile += ".stl" #Because 3mf is not supported for output
-
 
     argv = sys.argv[1:]
     if len(argv)==0:
@@ -56,8 +52,7 @@ def getargs():
 demo object in verbose and bi-algorithmic mode. Use argument -h for help.
 """)
         args.verbose = True
-        args.bi_algorithmic = True
-            
+        args.bi_algorithmic = True            
     return args
 
 
@@ -109,16 +104,15 @@ if __name__ == "__main__":
             sys.exit()   
         
     ## Creating tweaked output file
-    tweakedcontent=FileHandler.rotate(x.R, mesh, args.inputfile)
+    tweakedcontent=FileHandler.rotateSTL(x.R, mesh, args.inputfile)
   
     # Support structure suggestion can be used for further applications        
-    if x.Unprintability > 8:
+    if x.Unprintability > 7:
         tweakedcontent+=" {supportstructure: yes}"
         
     with open(args.outputfile,'w') as outfile:
         outfile.write(tweakedcontent)
 
-        
     ## Success message
     if args.verbose:
         print("Tweaking took:  \t{:2f} s".format(time.time()-stime))

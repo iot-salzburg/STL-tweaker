@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+# Python 2.7 and 3.5
 # Author: Christoph Schranz, Salzburg Research
 
 import sys
@@ -44,7 +44,7 @@ class Tweak:
                 
         ## Calculating initial printability
         amin = self.approachfirstvertex(content)
-        lit  =self.lithograph(content,[0,0,1],amin,CA)
+        lit  = self.lithograph(content,[0,0,1],amin,CA)
         liste = [[[0,0,1],lit[0], lit[1]]]
         ## vector: , groundA: , OverhangA: %s", liste[0]
 
@@ -56,7 +56,7 @@ class Tweak:
         
         if bi_algorithmic:
             dialg_time = time.time()
-            orientatations += self.egde_plus_vertex(mesh, 12) #alt_egde_plus_vertex(content, 12)
+            orientatations += self.egde_plus_vertex(mesh, 12)
             dialg_time = time.time() - dialg_time
             
             orientatations = self.remove_duplicates(orientatations)
@@ -77,7 +77,7 @@ class Tweak:
             
             # target function
             F = self.target_function(ret[0], ret[1], ret[2]) # touching area: i[1], overhang: i[2], touching line i[3]
-            if F<Unprintability- 0.05:
+            if F<Unprintability - 0.05:
                 Unprintability=F
                 bestside = [sn, ret[0], ret[1]]
 
@@ -131,11 +131,10 @@ Time-stats of algorithm:
             face.append(li)
             i+=1
             if i%3==0:
-                content.append([])
                 v=[face[1][0]-face[0][0],face[1][1]-face[0][1],face[1][2]-face[0][2]]
                 w=[face[2][0]-face[0][0],face[2][1]-face[0][1],face[2][2]-face[0][2]]
-                a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
-                content[int(i/3-1)]=[[round(i,6) for i in [a[0],a[1],a[2]]],face[0],face[1],face[2]]
+                a=[round(v[1]*w[2]-v[2]*w[1],6), round(v[2]*w[0]-v[0]*w[2],6), round(v[0]*w[1]-v[1]*w[0],6)]
+                content.append([a,face[0],face[1],face[2]])
                 face=[]
         return content
 
@@ -150,7 +149,7 @@ Time-stats of algorithm:
         return amin
 
 
-    def approachvertex(self,content, n):
+    def approachvertex(self, content, n):
         '''Returning the lowest value regarding vector n'''
         amin=sys.maxsize
         n=[-i for i in n]
@@ -213,14 +212,13 @@ Time-stats of algorithm:
         '''Searching best options out of the objects area vector field'''
         if self.bi_algorithmic: best_n = 7
         else: best_n = 5
-        
         orient = defaultdict(lambda: 0) #list()
         for li in content:       # Cumulate areavectors
             an = li[0]
             norma = math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2])
             
             if norma!=0:
-                an = [float("{:2f}".format(i/norma)) for i in an]
+                an = [round(i/norma, 6) for i in an]
                 if an != n:
                     v = [li[2][0]-li[1][0], li[2][1]-li[1][1], li[2][2]-li[1][2]]
                     w = [li[2][0]-li[3][0], li[2][1]-li[3][1], li[2][2]-li[3][2]]
@@ -228,7 +226,7 @@ Time-stats of algorithm:
                     A = math.sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2])/2
                     if A>0.01: # Smaller areas don't worry 
                         orient[tuple(an)] += A
-
+                        
         sorted_by_area = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
         top_n = sorted_by_area[:best_n]
         return [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
@@ -255,7 +253,7 @@ Time-stats of algorithm:
 
         sorted_by_rate = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
         top_n = filter(lambda x: x[1]>2, sorted_by_rate[:best_n])
-        
+
         return [[list(el[0]), el[1]] for el in top_n]
 
     def calc_random_normal(self, points):
@@ -265,7 +263,7 @@ Time-stats of algorithm:
         a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
         n = math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
         if n != 0:
-            return [float("{:2f}".format(i/n)) for i in a]
+            return [round(i/n, 6) for i in a]
         else:
             return None
             

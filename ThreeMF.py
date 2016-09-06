@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+# Python 2.7 and 3.5
 # Author: Christoph Schranz, Salzburg Research
 
 import sys, os

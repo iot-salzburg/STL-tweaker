@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+# Python 2.7 and 3.5
 # Author: Christoph Schranz, Salzburg Research
 
 ## You can preset the default model in line 40
@@ -7,7 +7,7 @@ import sys, argparse
 import os
 import time
 from MeshTweaker import Tweak
-from FileHandler import FileHandler
+import FileHandler
 
 
 def getargs():
@@ -32,13 +32,13 @@ def getargs():
     args = parser.parse_args()
 
     if args.version:
-        print("Tweaker 0.2.9, (2 September 2016)")
+        print("Tweaker 0.2.10, (6 September 2016)")
         return None        
     if not args.inputfile:
         try:
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
-            args.inputfile=curpath + os.sep + "death_star.stl"
+            #args.inputfile=curpath + os.sep + "death_star.stl"
             args.inputfile=curpath + os.sep + "cylinder.3mf"
             
         except:
@@ -68,7 +68,10 @@ if __name__ == "__main__":
         raise
         
     try:
+        print(args.inputfile)
+        FileHandler = FileHandler.FileHandler()
         objs = FileHandler.loadMesh(args.inputfile)
+        
         if objs is None:
             sys.exit()
     except(KeyboardInterrupt, SystemExit):

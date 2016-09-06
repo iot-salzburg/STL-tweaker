@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.4
+# Python 2.7 and 3.5
 # Author: Christoph Schranz, Salzburg Research
 
 import sys, os
@@ -8,11 +8,11 @@ import xml.etree.ElementTree as ET
 import ThreeMF
 
 
-class FileHandler:
-    def __init__(self, inputfile):
+class FileHandler():
+    def __init__(self):
         return None
         
-    def loadMesh(inputfile):
+    def loadMesh(self, inputfile):
         '''load meshs and object attributes from file'''
         ## loading mesh format
         
@@ -21,12 +21,12 @@ class FileHandler:
             f=open(inputfile,"rb")
             if "solid" in str(f.read(5).lower()):
                 f=open(inputfile,"r")
-                objs = [{"Mesh": FileHandler.loadAsciiSTL(f)}]
+                objs = [{"Mesh": self.loadAsciiSTL(f)}]
                 if len(mesh) < 3:
                      f.seek(5, os.SEEK_SET)
-                     objs = [{"Mesh": FileHandler.loadBinarySTL(f)}]
+                     objs = [{"Mesh": self.loadBinarySTL(f)}]
             else:
-                objs = [{"Mesh": FileHandler.loadBinarySTL(f)}]
+                objs = [{"Mesh": self.loadBinarySTL(f)}]
                 
         elif filetype == ".3mf":
             
@@ -34,11 +34,11 @@ class FileHandler:
         else:
             print("File type is not supported.")
             sys.exit()
-            
+
         return objs
 
 
-    def loadAsciiSTL(f):
+    def loadAsciiSTL(self, f):
         '''Reading mesh data from ascii STL'''
         mesh=list()
         for line in f:
@@ -47,7 +47,7 @@ class FileHandler:
                 mesh.append([float(data[0]), float(data[1]), float(data[2])])
         return mesh
 
-    def loadBinarySTL(f):
+    def loadBinarySTL(self, f):
         '''Reading mesh data from binary STL'''
         	#Skip the header
         f.read(80-5)
@@ -61,17 +61,17 @@ class FileHandler:
         return mesh
 
 
-    def rotate3MF(*arg):
+    def rotate3MF(self, *arg):
         ThreeMF.rotate3MF(*arg)
         
                   
-    def rotateSTL(R, content, filename):
+    def rotateSTL(self, R, content, filename):
         '''Rotate the object and save as ascii STL'''
         face=[]
         mesh=[]
         i=0
 
-        rotated_content=list(map(FileHandler.rotate_vert, content, [R]*len(content)))
+        rotated_content=list(map(self.rotate_vert, content, [R]*len(content)))
         
         for li in rotated_content:      
             face.append(li)
@@ -80,26 +80,26 @@ class FileHandler:
                 mesh.append([face[0],face[1],face[2]])
                 face=[]
 
-        mesh = map(FileHandler.calc_nomal, mesh)
+        mesh = map(self.calc_nomal, mesh)
 
         tweaked = list("solid %s" % filename)
-        tweaked += list(map(FileHandler.write_facett, mesh))
+        tweaked += list(map(self.write_facett, mesh))
         tweaked.append("\nendsolid %s\n" % filename)
         tweaked = "".join(tweaked)
         
         return tweaked
 
-    def rotate_vert(a,R):
+    def rotate_vert(self, a, R):
         return [a[0]*R[0][0]+a[1]*R[1][0]+a[2]*R[2][0],
                               a[0]*R[0][1]+a[1]*R[1][1]+a[2]*R[2][1],
                               a[0]*R[0][2]+a[1]*R[1][2]+a[2]*R[2][2]]
-    def calc_nomal(face):
+    def calc_nomal(self, face):
         v=[face[1][0]-face[0][0],face[1][1]-face[0][1],face[1][2]-face[0][2]]
         w=[face[2][0]-face[0][0],face[2][1]-face[0][1],face[2][2]-face[0][2]]
         a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]        
         return [[a[0],a[1],a[2]],face[0],face[1],face[2]]
     
-    def write_facett(facett):
+    def write_facett(self, facett):
         return"""\nfacet normal %f %f %f
     outer loop
         vertex %f %f %f

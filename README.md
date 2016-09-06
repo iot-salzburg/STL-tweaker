@@ -9,9 +9,6 @@ Author: Christoph Schranz, 12.01.2016
 
 `python Tweaker.py -i yourobject.stl -b -vb`
 
-or (on Windows):
-
-`Tweaker.exe -i yourobject.stl -vb`
 
 ## Find more options:
 `python FileHandler.py -h`

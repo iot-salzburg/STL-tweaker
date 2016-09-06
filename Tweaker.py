@@ -38,8 +38,8 @@ def getargs():
         try:
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
-            #args.inputfile=curpath + os.sep + "death_star.stl"
-            #args.inputfile=curpath + os.sep + "cylinder.3mf"
+            args.inputfile=curpath + os.sep + "death_star.stl"
+            args.inputfile=curpath + os.sep + "cylinder.3mf"
             
         except:
             return None          
@@ -107,7 +107,7 @@ if __name__ == "__main__":
                 sys.exit()   
           
         ## Creating tweaked output file
-        if os.path.splitext(args.inputfile)[1].lower() == ".stl":
+        if os.path.splitext(args.outputfile)[1].lower() in ["stl", ".stl"]:
             tweakedcontent=FileHandler.rotateSTL(x.R, mesh, args.inputfile)       
             # Support structure suggestion can be used for further applications        
             #if x.Unprintability > 7:

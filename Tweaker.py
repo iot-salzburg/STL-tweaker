@@ -38,13 +38,14 @@ def getargs():
         try:
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
-            #args.inputfile=curpath + os.sep + "kugel_konisch.stl"
+            #args.inputfile=curpath + os.sep + "death_star.stl"
             #args.inputfile=curpath + os.sep + "cylinder.3mf"
+            
         except:
             return None          
     if not args.outputfile:
-        args.outputfile = os.path.splitext(args.inputfile)[0] + "_tweaked" 
-        args.outputfile += ".stl" #Because 3mf is not supported for output
+        args.outputfile = os.path.splitext(args.inputfile)[0] + "_tweaked"
+        args.outputfile += ".stl" #Because 3mf is not supported for output #TODO
 
     argv = sys.argv[1:]
     if len(argv)==0:
@@ -67,8 +68,8 @@ if __name__ == "__main__":
         raise
         
     try:
-        mesh = FileHandler.loadMesh(args.inputfile)
-        if mesh is None:
+        objs = FileHandler.loadMesh(args.inputfile)
+        if objs is None:
             sys.exit()
     except(KeyboardInterrupt, SystemExit):
         print("\nError, loading mesh from file failed!")
@@ -78,40 +79,53 @@ if __name__ == "__main__":
     if args.verbose:
         print("Calculating the optimal orientation:\n  {}\n"
                         .format(args.inputfile.split("\\")[-1]))
-        
-    try:
-        cstime = time.time()
-        x=Tweak(mesh, args.bi_algorithmic, args.verbose, args.angle)          
-    except (KeyboardInterrupt, SystemExit):
-        print("\nError, tweaking process failed!")
-        raise
-        
-    ## List tweaking results
-    if args.result or args.verbose:
-        print("\nResult-stats:")
-        print(" Tweaked Z-axis: \t{}".format((x.Zn)))
-        print(" Axis, angle:   \t{v}, {phi}".format(v=x.v, phi=x.phi))
-        print(""" Rotation matrix: 
-    {:2f}\t{:2f}\t{:2f}
-    {:2f}\t{:2f}\t{:2f}
-    {:2f}\t{:2f}\t{:2f}""".format(x.R[0][0], x.R[0][1], x.R[0][2],
-                                  x.R[1][0], x.R[1][1], x.R[1][2], 
-                                  x.R[2][0], x.R[2][1], x.R[2][2]))
-        print(" Unprintability: \t{}".format(x.Unprintability))
-        
-        print("\nFound result:    \t{:2f} s".format(time.time()-cstime))
-        if args.result: 
-            sys.exit()   
-        
-    ## Creating tweaked output file
-    tweakedcontent=FileHandler.rotateSTL(x.R, mesh, args.inputfile)
-  
-#    # Support structure suggestion can be used for further applications        
-#    if x.Unprintability > 7:
-#        tweakedcontent+=" {supportstructure: yes}"
-        
-    with open(args.outputfile,'w') as outfile:
-        outfile.write(tweakedcontent)
+    c = 0
+    for obj in objs:
+        mesh = obj["Mesh"]
+        try:
+            cstime = time.time()
+            x=Tweak(mesh, args.bi_algorithmic, args.verbose, args.angle)          
+        except (KeyboardInterrupt, SystemExit):
+            print("\nError, tweaking process failed!")
+            raise
+            
+        ## List tweaking results
+        if args.result or args.verbose:
+            print("\nResult-stats:")
+            print(" Tweaked Z-axis: \t{}".format((x.Zn)))
+            print(" Axis, angle:   \t{v}, {phi}".format(v=x.v, phi=x.phi))
+            print(""" Rotation matrix: 
+        {:2f}\t{:2f}\t{:2f}
+        {:2f}\t{:2f}\t{:2f}
+        {:2f}\t{:2f}\t{:2f}""".format(x.R[0][0], x.R[0][1], x.R[0][2],
+                                      x.R[1][0], x.R[1][1], x.R[1][2], 
+                                      x.R[2][0], x.R[2][1], x.R[2][2]))
+            print(" Unprintability: \t{}".format(x.Unprintability))
+            
+            print("\nFound result:    \t{:2f} s".format(time.time()-cstime))
+            if args.result: 
+                sys.exit()   
+          
+        ## Creating tweaked output file
+        if os.path.splitext(args.inputfile)[1].lower() == ".stl":
+            tweakedcontent=FileHandler.rotateSTL(x.R, mesh, args.inputfile)       
+            # Support structure suggestion can be used for further applications        
+            #if x.Unprintability > 7:
+            #    tweakedcontent+=" {supportstructure: yes}"
+            if len(objs)<=1:
+                outfile = args.outputfile
+            else:
+                outfile = os.path.splitext(args.outputfile)[0]+" ({})".format(c)+os.path.splitext(args.outputfile)[1]
+            with open(outfile,'w') as outfile:
+                outfile.write(tweakedcontent)
+
+        else:
+            transformation = "{} {} {} {} {} {} {} {} {} 0 0 1".format(x.R[0][0], x.R[0][1], x.R[0][2],
+                                x.R[1][0], x.R[1][1], x.R[1][2], x.R[2][0], x.R[2][1], x.R[2][2])
+            obj["transform"] = transformation
+            FileHandler.rotate3MF(args.inputfile, args.outputfile, objs)
+
+    
 
     ## Success message
     if args.verbose:

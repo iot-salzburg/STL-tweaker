@@ -63,7 +63,7 @@ class Tweak:
   
         if verbose:
             print("Examine {} orientations:".format(len(orientatations)))
-            print("  %-32s \tTouching Area:      Overhang:\tUnprintability:" %("Area Vector:"))
+            print("  %-32s %-18s%-18s%-18s " %("Area Vector:", "Touching Area:", "Overhang:", "Unprintability:"))
             
         # Calculate the printability of each orientation
         lit_time = time.time()
@@ -82,8 +82,8 @@ class Tweak:
                 bestside = [sn, ret[0], ret[1]]
 
             if verbose:
-                print("  %-32s \t{}      \t\t{}   \t{}".format(round(ret[0],3), 
-                      round(ret[1],3), round(F,3)) %str(sn))
+                print("  %-32s %-18s%-18s%-18s " %(str(sn), round(ret[0],3), 
+                      round(ret[1],3), round(F,3)))
 
             
         lit_time = time.time() - lit_time

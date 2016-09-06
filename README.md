@@ -10,5 +10,10 @@ Author: Christoph Schranz, 12.01.2016
 `python Tweaker.py -i yourobject.stl -b -vb`
 
 
+## 3MF to STL:  
+
+`python Tweaker.py -i yourobject.3mf -o yourobject.stl -b -vb`
+
+
 ## Find more options:
 `python FileHandler.py -h`

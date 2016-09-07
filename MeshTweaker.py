@@ -79,7 +79,7 @@ class Tweak:
             F = self.target_function(ret[0], ret[1], ret[2]) # touching area: i[1], overhang: i[2], touching line i[3]
             if F<Unprintability - 0.05:
                 Unprintability=F
-                bestside = [sn, ret[0], ret[1]]
+                bestside = [sn, ret[0]+ret[2], ret[1]]
 
             if verbose:
                 print("  %-32s %-18s%-18s%-18s " %(str(sn), round(ret[0],3), 
@@ -153,7 +153,7 @@ Time-stats of algorithm:
         '''Returning the lowest value regarding vector n'''
         amin=sys.maxsize
         n=[-i for i in n]
-        normn=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
+        normn=math.sqrt(n[0]**2 + n[1]**2 + n[2]**2)
         for li in content:
             a1=(li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2])/normn
             a2=(li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2])/normn
@@ -193,8 +193,7 @@ Time-stats of algorithm:
                     Overhang += ali
                 else:
                     Grundfl += ali
-                    Touching_Length += self.get_touching_line([a1,a2,a3], li, touching_height)
-
+                    Touching_Length += self.get_touching_line([a1,a2,a3], li, touching_height)                    
         return [Grundfl, Overhang, Touching_Length]
     
     def get_touching_line(self, a, li, touching_height):
@@ -228,8 +227,7 @@ Time-stats of algorithm:
                     x = [v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
                     A = math.sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2])/2
                     if A>0.01: # Smaller areas don't worry 
-                        orient[tuple(an)] += A
-                        
+                        orient[tuple(an)] += A                        
         sorted_by_area = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
         top_n = sorted_by_area[:best_n]
         return [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
@@ -241,22 +239,17 @@ Time-stats of algorithm:
         # Small files need more calculations
         if vcount < 10000: it = 5
         elif vcount < 25000: it = 2
-        else: it = 1
-           
+        else: it = 1           
         self.mesh = mesh
-        randlist = map(self.random_tri, list(range(vcount))*it)
-    
+        randlist = map(self.random_tri, list(range(vcount))*it)  
         lst = map(self.calc_random_normal, randlist)
         lst = filter(lambda x: x is not None, lst)
-
         orient = defaultdict(lambda: 0)
 
         for an in lst:
             orient[tuple(an)] += 1
-
         sorted_by_rate = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
         top_n = filter(lambda x: x[1]>2, sorted_by_rate[:best_n])
-
         return [[list(el[0]), el[1]] for el in top_n]
 
     def calc_random_normal(self, points):
@@ -295,7 +288,6 @@ Time-stats of algorithm:
                 if dif < 0.001:
                     duplicate = True
                     break
-                    
             if duplicate is None:
                 orientations.append(i)
         return orientations
@@ -325,7 +317,5 @@ Time-stats of algorithm:
              [v[2] * v[0] * (1 - math.cos(phi)) - v[1] * math.sin(phi),
               v[2] * v[1] * (1 - math.cos(phi)) + v[0] * math.sin(phi),
               v[2] * v[2] * (1 - math.cos(phi)) + math.cos(phi)]]
-
         R = [[float("{:2f}".format(val)) for val in row] for row in R] 
-        
         return [v,phi,R]

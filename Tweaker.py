@@ -20,7 +20,7 @@ def getargs():
     parser.add_argument('-o', action="store", dest="outputfile",
                         help="select output file. '_tweaked' is postfix by default")
     parser.add_argument('-a', '--angle', action="store", dest="angle", type=int,
-                        default=45,
+                        default=40,
                         help="specify critical angle for overhang demarcation in degrees")
     parser.add_argument('-b', '--bi', action="store_true", dest="bi_algorithmic", default=False,
                         help="using two algorithms for calculation")

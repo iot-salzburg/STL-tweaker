@@ -3,8 +3,6 @@
 
 import sys, os
 import struct
-import time
-import xml.etree.ElementTree as ET
 import ThreeMF
 
 
@@ -22,7 +20,7 @@ class FileHandler():
             if "solid" in str(f.read(5).lower()):
                 f=open(inputfile,"r")
                 objs = [{"Mesh": self.loadAsciiSTL(f)}]
-                if len(mesh) < 3:
+                if len(objs[0]["Mesh"]) < 3:
                      f.seek(5, os.SEEK_SET)
                      objs = [{"Mesh": self.loadBinarySTL(f)}]
             else:

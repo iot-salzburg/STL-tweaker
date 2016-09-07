@@ -33,7 +33,7 @@ class Tweak:
     And the relative unprintability of the tweaked object. If this value is
      greater than 15, a support structure is suggested.
         """
-    def __init__(self, mesh, bi_algorithmic, verbose, CA=45, n=[0,0,-1]):
+    def __init__(self, mesh, bi_algorithmic, verbose, CA=40, n=[0,0,-1]):
         
         self.bi_algorithmic = bi_algorithmic
         self.workflow(mesh, bi_algorithmic, verbose, CA, n)
@@ -173,6 +173,7 @@ Time-stats of algorithm:
         touching_height = amin+0.15
         
         normn=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
+        anti_n = [float(-i) for i in n]
         
         for li in content:
             a=li[0]
@@ -187,6 +188,8 @@ Time-stats of algorithm:
                 ali=round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2, 4)
                 
                 if an > touching_height:
+                    if 0.00001 < math.fabs(a[0]-anti_n[0]) + math.fabs(a[1]-anti_n[1]) + math.fabs(a[2]-anti_n[2]):
+                        ali = 0.8 * ali
                     Overhang += ali
                 else:
                     Grundfl += ali

@@ -19,6 +19,8 @@ def getargs():
                         dest="inputfile", help="select input file")
     parser.add_argument('-o', action="store", dest="outputfile",
                         help="select output file. '_tweaked' is postfix by default")
+    parser.add_argument('-c', '--convert', action="store_true",dest="convert", 
+                        help="convert 3mf to stl without tweaking", default=False)
     parser.add_argument('-a', '--angle', action="store", dest="angle", type=int,
                         default=40,
                         help="specify critical angle for overhang demarcation in degrees")
@@ -39,7 +41,7 @@ def getargs():
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
             #args.inputfile=curpath + os.sep + "death_star.stl"
-            args.inputfile=curpath + os.sep + "cylinder.3mf"
+            #args.inputfile=curpath + os.sep + "cylinder.3mf"
             
         except:
             return None          
@@ -52,6 +54,7 @@ def getargs():
         print("""No additional arguments. Testing calculation with 
 demo object in verbose and bi-algorithmic mode. Use argument -h for help.
 """)
+        args.convert = False
         args.verbose = True
         args.bi_algorithmic = True            
     return args
@@ -85,33 +88,37 @@ if __name__ == "__main__":
     c = 0
     for obj in objs:
         mesh = obj["Mesh"]
-        try:
-            cstime = time.time()
-            x=Tweak(mesh, args.bi_algorithmic, args.verbose, args.angle)          
-        except (KeyboardInterrupt, SystemExit):
-            print("\nError, tweaking process failed!")
-            raise
-            
-        ## List tweaking results
-        if args.result or args.verbose:
-            print("\nResult-stats:")
-            print(" Tweaked Z-axis: \t{}".format((x.Zn)))
-            print(" Axis, angle:   \t{v}, {phi}".format(v=x.v, phi=x.phi))
-            print(""" Rotation matrix: 
-        {:2f}\t{:2f}\t{:2f}
-        {:2f}\t{:2f}\t{:2f}
-        {:2f}\t{:2f}\t{:2f}""".format(x.R[0][0], x.R[0][1], x.R[0][2],
-                                      x.R[1][0], x.R[1][1], x.R[1][2], 
-                                      x.R[2][0], x.R[2][1], x.R[2][2]))
-            print(" Unprintability: \t{}".format(x.Unprintability))
-            
-            print("\nFound result:    \t{:2f} s".format(time.time()-cstime))
-            if args.result: 
-                sys.exit()   
+        if args.convert:
+            R=[[1,0,0],[0,1,0],[0,0,1]]
+        else:
+            try:
+                cstime = time.time()
+                x=Tweak(mesh, args.bi_algorithmic, args.verbose, args.angle)
+                R=x.R
+            except (KeyboardInterrupt, SystemExit):
+                print("\nError, tweaking process failed!")
+                raise
+                
+            ## List tweaking results
+            if args.result or args.verbose:
+                print("\nResult-stats:")
+                print(" Tweaked Z-axis: \t{}".format((x.Zn)))
+                print(" Axis, angle:   \t{v}, {phi}".format(v=x.v, phi=x.phi))
+                print(""" Rotation matrix: 
+            {:2f}\t{:2f}\t{:2f}
+            {:2f}\t{:2f}\t{:2f}
+            {:2f}\t{:2f}\t{:2f}""".format(x.R[0][0], x.R[0][1], x.R[0][2],
+                                          x.R[1][0], x.R[1][1], x.R[1][2], 
+                                          x.R[2][0], x.R[2][1], x.R[2][2]))
+                print(" Unprintability: \t{}".format(x.Unprintability))
+                
+                print("\nFound result:    \t{:2f} s".format(time.time()-cstime))
+                if args.result: 
+                    sys.exit()   
           
         ## Creating tweaked output file
         if os.path.splitext(args.outputfile)[1].lower() in ["stl", ".stl"]:
-            tweakedcontent=FileHandler.rotateSTL(x.R, mesh, args.inputfile)       
+            tweakedcontent=FileHandler.rotateSTL(R, mesh, args.inputfile)       
             # Support structure suggestion can be used for further applications        
             #if x.Unprintability > 7:
             #    tweakedcontent+=" {supportstructure: yes}"

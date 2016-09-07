@@ -10,9 +10,9 @@ Author: Christoph Schranz, 12.01.2016
 `python Tweaker.py -i yourobject.stl -b -vb`
 
 
-## 3MF to STL:  
+## Convert 3MF or Binary to Ascii STL without Tweaking:  
 
-`python Tweaker.py -i yourobject.3mf -o yourobject.stl -b -vb`
+`python Tweaker.py -i yourobject.3mf -c`
 
 
 ## Find more options:

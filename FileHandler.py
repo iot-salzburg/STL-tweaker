@@ -2,7 +2,7 @@
 # Author: Christoph Schranz, Salzburg Research
 
 import sys, os
-import struct
+import struct, time
 import ThreeMF
 
 
@@ -64,7 +64,10 @@ class FileHandler():
         
                   
     def rotateSTL(self, R, content, filename):
-        '''Rotate the object and save as ascii STL'''
+        '''Rotate the object and save as ascii STL. This module is currently replaced
+        by the binary version. If you want to use ASCII STL, please do the
+        following changes in Tweaker.py: Replace "rotateSTL" with "rotatebinSTL"
+        and set in the write sequence the open outfile option from "wb" to "w".'''
         face=[]
         mesh=[]
         i=0
@@ -107,4 +110,34 @@ class FileHandler():
 endfacet""" % (facett[0][0], facett[0][1], facett[0][2], facett[1][0], 
                facett[1][1], facett[1][2], facett[2][0], facett[2][1], 
                 facett[2][2], facett[3][0], facett[3][1], facett[3][2])
+
+    def rotatebinSTL(self, R, content, filename):
+        '''Rotate the object and save as binary STL'''
+        face=[]
+        mesh=[]
+        i=0
+
+        rotated_content=list(map(self.rotate_vert, content, [R]*len(content)))
         
+        for li in rotated_content:      
+            face.append(li)
+            i+=1
+            if i%3==0:
+                mesh.append([face[0],face[1],face[2]])
+                face=[]
+
+        mesh = map(self.calc_nomal, mesh)
+
+        tweaked = "Tweaked on {}".format(time.strftime("%a %d %b %Y %H:%M:%S")
+                                ).encode().ljust(79, " ") + "\n"
+        
+        tweaked += struct.pack("<I", int(len(mesh))) #list("solid %s" % filename)
+        #tweaked += list(map(self.write_bin_facett, mesh))
+        for facett in mesh:
+            tweaked += struct.pack("<fff", facett[0][0], facett[0][1], facett[0][2])
+            tweaked += struct.pack("<fff", facett[1][0], facett[1][1], facett[1][2])
+            tweaked += struct.pack("<fff", facett[2][0], facett[2][1], facett[2][2])
+            tweaked += struct.pack("<fff", facett[3][0], facett[3][1], facett[3][2])
+            tweaked += struct.pack("<H", 0)
+            
+        return tweaked

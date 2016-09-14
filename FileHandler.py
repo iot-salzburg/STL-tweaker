@@ -64,10 +64,7 @@ class FileHandler():
         
                   
     def rotateSTL(self, R, content, filename):
-        '''Rotate the object and save as ascii STL. This module is currently replaced
-        by the binary version. If you want to use ASCII STL, please do the
-        following changes in Tweaker.py: Replace "rotateSTL" with "rotatebinSTL"
-        and set in the write sequence the open outfile option from "wb" to "w".'''
+        '''Rotate the object and save as ascii STL.'''
         face=[]
         mesh=[]
         i=0
@@ -112,7 +109,11 @@ endfacet""" % (facett[0][0], facett[0][1], facett[0][2], facett[1][0],
                 facett[2][2], facett[3][0], facett[3][1], facett[3][2])
 
     def rotatebinSTL(self, R, content, filename):
-        '''Rotate the object and save as binary STL'''
+        '''Rotate the object and save as binary STL. This module is currently replaced
+        by the ascii version. If you want to use binary STL, please do the
+        following changes in Tweaker.py: Replace "rotatebinSTL" by "rotateSTL"
+        and set in the write sequence the open outfile option from "w" to "wb".
+        However, the ascii version is much faster in Python 3.'''
         face=[]
         mesh=[]
         i=0
@@ -129,9 +130,8 @@ endfacet""" % (facett[0][0], facett[0][1], facett[0][2], facett[1][0],
         mesh = map(self.calc_nomal, mesh)
 
         tweaked = "Tweaked on {}".format(time.strftime("%a %d %b %Y %H:%M:%S")
-                                ).encode().ljust(79, " ") + "\n"
-        
-        tweaked += struct.pack("<I", int(len(mesh))) #list("solid %s" % filename)
+                                ).encode().ljust(79, b" ") + b"\n"
+        tweaked += struct.pack("<I", int(len(content)/3)) #list("solid %s" % filename)
         #tweaked += list(map(self.write_bin_facett, mesh))
         for facett in mesh:
             tweaked += struct.pack("<fff", facett[0][0], facett[0][1], facett[0][2])

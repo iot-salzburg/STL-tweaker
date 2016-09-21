@@ -44,10 +44,11 @@ class Tweak:
                 
         ## Calculating initial printability
         amin = self.approachfirstvertex(content)
-        lit  = self.lithograph(content,[0,0,1],amin,CA)
-        liste = [[[0,0,1],lit[0], lit[1]]]
-        ## vector: , groundA: , OverhangA: %s", liste[0]
-
+        ret  = self.lithograph(content,[0,0,1],amin,CA)
+        liste = [[[0,0,1],ret[0], ret[1]], ret[2]]
+        Unprintability = self.target_function(ret[0], ret[1], ret[2]) # touching area: i[1], overhang: i[2], touching line i[3]
+        bestside = [[0,0,1], ret[0]+ret[2], ret[1]]
+        
         ## Searching promising orientations: 
         ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
         arcum_time = time.time()
@@ -67,7 +68,6 @@ class Tweak:
             
         # Calculate the printability of each orientation
         lit_time = time.time()
-        Unprintability=sys.maxsize
         for side in orientatations:
             sn = [float("{:6f}".format(-i)) for i in side[0]]
             ## vector: sn, cum_A: side[1]

@@ -196,7 +196,7 @@ Time-stats of algorithm:
                     bottomA += ali
                     LineL += self.get_touching_line([a1,a2,a3], li, touching_height)
                 time.sleep(0)  # Yield, so other threads get a bit of breathing space.
-        return [bottomA, Overhang, LineL]
+        return bottomA, Overhang, LineL
     
     def get_touching_line(self, a, li, touching_height):
         touch_lst = list()
@@ -245,8 +245,7 @@ Time-stats of algorithm:
         elif vcount < 25000: it = 2
         else: it = 1           
         self.mesh = mesh
-        randlist = map(self.random_tri, list(range(vcount))*it)  
-        lst = map(self.calc_random_normal, randlist)
+        lst = map(self.calc_random_normal, list(range(vcount))*it)
         lst = filter(lambda x: x is not None, lst)
         
         orient = defaultdict(lambda: 0)
@@ -259,30 +258,25 @@ Time-stats of algorithm:
         top_n = sorted_by_rate[:best_n]
         return [[list(el[0]), el[1]] for el in top_n]
 
-    def calc_random_normal(self, points):
-        [v, w, r_v] = points
+    def calc_random_normal(self, i):
+        if i%3 == 0:
+            v = self.mesh[i]
+            w = self.mesh[i+1]
+        elif i%3 == 1:
+            v = self.mesh[i]
+            w = self.mesh[i+1]
+        else:
+            v = self.mesh[i]
+            w = self.mesh[i-2]
+        r_v = random.choice(self.mesh)
         v = [v[0]-r_v[0], v[1]-r_v[1], v[2]-r_v[2]]
         w = [w[0]-r_v[0], w[1]-r_v[1], w[2]-r_v[2]]
         a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
         n = math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
         if n != 0:
-            return [round(i/n, 6) for i in a]
+            return [round(d/n, 6) for d in a]
         else:
             return None
-            
-    def random_tri(self, i):
-        mesh=self.mesh
-        if i%3 == 0:
-            v = mesh[i]
-            w = mesh[i+1]
-        elif i%3 == 1:
-            v = mesh[i]
-            w = mesh[i+1]
-        else:
-            v = mesh[i]
-            w = mesh[i-2]
-        r_v = random.choice(mesh)
-        return [v,w,r_v]
 
 
     def remove_duplicates(self, o):
@@ -326,4 +320,4 @@ Time-stats of algorithm:
               v[2] * v[1] * (1 - math.cos(phi)) + v[0] * math.sin(phi),
               v[2] * v[2] * (1 - math.cos(phi)) + math.cos(phi)]]
         R = [[float("{:2f}".format(val)) for val in row] for row in R] 
-        return [v,phi,R]
+        return v,phi,R

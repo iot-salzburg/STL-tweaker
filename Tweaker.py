@@ -118,6 +118,7 @@ if __name__ == "__main__":
           
         ## Creating tweaked output file
         if os.path.splitext(args.outputfile)[1].lower() in ["stl", ".stl"]:
+            # If you want to write in binary, use the function rotatebinSTL(...)"
             tweakedcontent=FileHandler.rotateSTL(R, mesh, args.inputfile)       
             # Support structure suggestion can be used for further applications        
             #if x.Unprintability > 7:

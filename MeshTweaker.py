@@ -36,19 +36,15 @@ class Tweak:
     def __init__(self, mesh, bi_algorithmic, verbose, CA=40, n=[0,0,-1]):
         
         self.bi_algorithmic = bi_algorithmic
-        self.workflow(mesh, bi_algorithmic, verbose, CA, n)
         
-    def workflow(self, mesh, bi_algorithmic, verbose, CA, n):
-
         content = self.arrange_mesh(mesh)
         arcum_time = dialg_time = lit_time=0
                 
         ## Calculating initial printability
         amin = self.approachfirstvertex(content)
-        ret  = self.lithograph(content,[0,0,1],amin,CA)
-        liste = [[[0,0,1],ret[0], ret[1]], ret[2]]
-        Unprintability = self.target_function(ret[0], ret[1], ret[2]) # touching area: i[1], overhang: i[2], touching line i[3]
-        bestside = [[0,0,1], ret[0]+ret[2], ret[1]]
+        bottomA, overhangA, lineL = self.lithograph(content,[0,0,1],amin,CA)
+        liste = [[[0,0,1], bottomA, overhangA, lineL]]
+
 
         ## Searching promising orientations: 
         ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
@@ -63,30 +59,35 @@ class Tweak:
             orientatations = self.remove_duplicates(orientatations)
         if verbose:
             print("Examine {} orientations:".format(len(orientatations)))
-            print("  %-32s %-18s%-18s%-18s " %("Area Vector:", "Touching Area:", "Overhang:", "Unprintability:"))
-            
+            print("  %-32s %-18s%-18s%-18s%-18s " %("Area Vector:", 
+            "Touching Area:", "Overhang:", "Line length:", "Unprintability:"))
+        
+        
         # Calculate the printability of each orientation
         lit_time = time.time()
         for side in orientatations:
-            sn = [float("{:6f}".format(-i)) for i in side[0]]
+            orientation = [float("{:6f}".format(-i)) for i in side[0]]
             ## vector: sn, cum_A: side[1]
-            amin=self.approachvertex(content, side[0])
-            ret=self.lithograph(content, sn, amin, CA)
-            liste.append([sn, ret[0], ret[1], ret[2]])   #[Vector, touching area, Overhang, Touching_Line]
-            
-            # target function
-            F = self.target_function(ret[0], ret[1], ret[2]) # touching area: i[1], overhang: i[2], touching line i[3]
+            amin=self.approachvertex(content, orientation)
+            bottomA, overhangA, lineL = self.lithograph(content, orientation, amin, CA)
+            liste.append([orientation, bottomA, overhangA, lineL])   #[Vector, touching area, Overhang, Touching_Line]
+        
+        
+        # target function
+        Unprintability = sys.maxsize
+        for orientation, bottomA, overhangA, lineL in liste:
+            F = self.target_function(bottomA, overhangA, lineL) # touching area: i[1], overhang: i[2], touching line i[3]
             if F<Unprintability - 0.05:
                 Unprintability=F
-                bestside = [sn, ret[0]+ret[2], ret[1]]
-
+                bestside = [orientation, bottomA, overhangA, lineL]
             if verbose:
-                print("  %-32s %-18s%-18s%-18s " %(str(sn), round(ret[0],3), 
-                      round(ret[1],3), round(F,3)))
+                print("  %-32s %-18s%-18s%-18s%-18s " %(str(orientation), round(bottomA,3), 
+                      round(overhangA,3),round(lineL,3), round(F,3)))
             time.sleep(0)  # Yield, so other threads get a bit of breathing space.
             
+           
+           
         lit_time = time.time() - lit_time
-
         if verbose:
             print("""
 Time-stats of algorithm:
@@ -153,12 +154,10 @@ Time-stats of algorithm:
     def approachvertex(self, content, n):
         '''Returning the lowest value regarding vector n'''
         amin=sys.maxsize
-        n=[-i for i in n]
-        normn=math.sqrt(n[0]**2 + n[1]**2 + n[2]**2)
         for li in content:
-            a1=(li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2])/normn
-            a2=(li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2])/normn
-            a3=(li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2])/normn           
+            a1 = li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2]
+            a2 = li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2]
+            a3 = li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2]          
             an=min([a1,a2,a3])
             if an<amin:
                 amin=an
@@ -170,11 +169,10 @@ Time-stats of algorithm:
         '''Calculating touching areas and overhangs regarding the vector n'''
         Overhang=1
         alpha=-math.cos((90-CA)*math.pi/180)
-        Grundfl=1
-        Touching_Length = 1
+        bottomA=1
+        LineL = 1
         touching_height = amin+0.15
         
-        normn=math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2])
         anti_n = [float(-i) for i in n]
 
         for li in content:
@@ -183,22 +181,22 @@ Time-stats of algorithm:
             norma=math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
             if norma < 2:
                 continue
-            if alpha > (a[0]*n[0] +a[1]*n[1] +a[2]*n[2])/(norma*normn):
-                a1=(li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2])/normn
-                a2=(li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2])/normn
-                a3=(li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2])/normn 
-                an=min([a1,a2,a3])
-                ali=round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2, 4)
+            if alpha > (a[0]*n[0] +a[1]*n[1] +a[2]*n[2])/norma:
+                a1 = li[1][0]*n[0] +li[1][1]*n[1] +li[1][2]*n[2]
+                a2 = li[2][0]*n[0] +li[2][1]*n[1] +li[2][2]*n[2]
+                a3 = li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2]
+                an = min([a1,a2,a3])
                 
-                if an > touching_height:
+                ali = round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2, 4)
+                if touching_height < an:
                     if 0.00001 < math.fabs(a[0]-anti_n[0]) + math.fabs(a[1]-anti_n[1]) + math.fabs(a[2]-anti_n[2]):
                         ali = 0.8 * ali
                     Overhang += ali
                 else:
-                    Grundfl += ali
-                    Touching_Length += self.get_touching_line([a1,a2,a3], li, touching_height)
-            time.sleep(0)  # Yield, so other threads get a bit of breathing space.
-        return [Grundfl, Overhang, Touching_Length]
+                    bottomA += ali
+                    LineL += self.get_touching_line([a1,a2,a3], li, touching_height)
+                time.sleep(0)  # Yield, so other threads get a bit of breathing space.
+        return [bottomA, Overhang, LineL]
     
     def get_touching_line(self, a, li, touching_height):
         touch_lst = list()
@@ -231,9 +229,9 @@ Time-stats of algorithm:
                     w = [li[2][0]-li[3][0], li[2][1]-li[3][1], li[2][2]-li[3][2]]
                     x = [v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
                     A = math.sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2])/2
-                    if A>0.01: # Smaller areas don't worry 
+                    if A>0.1: # Smaller areas don't impact the result.
                         orient[tuple(an)] += A
-            time.sleep(0)  # Yield, so other threads get a bit of breathing space.
+        time.sleep(0)  # Yield, so other threads get a bit of breathing space.
         sorted_by_area = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
         top_n = sorted_by_area[:best_n]
         return [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
@@ -250,13 +248,15 @@ Time-stats of algorithm:
         randlist = map(self.random_tri, list(range(vcount))*it)  
         lst = map(self.calc_random_normal, randlist)
         lst = filter(lambda x: x is not None, lst)
+        
         orient = defaultdict(lambda: 0)
-
         for an in lst:
             orient[tuple(an)] += 1
-            time.sleep(0)  # Yield, so other threads get a bit of breathing space.
-        sorted_by_rate = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
-        top_n = filter(lambda x: x[1]>2, sorted_by_rate[:best_n])
+        
+        time.sleep(0)  # Yield, so other threads get a bit of breathing space.
+        poss_n = filter(lambda x: x[1]>2, orient.items())
+        sorted_by_rate = sorted(poss_n, key=operator.itemgetter(1), reverse=True)
+        top_n = sorted_by_rate[:best_n]
         return [[list(el[0]), el[1]] for el in top_n]
 
     def calc_random_normal(self, points):
@@ -301,7 +301,7 @@ Time-stats of algorithm:
         return orientations
 
 
-    
+
     def euler(self, bestside):
         '''Calculating euler params and rotation matrix'''
         if bestside[0] == [0, 0, -1]:

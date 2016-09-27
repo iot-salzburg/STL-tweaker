@@ -22,7 +22,7 @@ def getargs():
     parser.add_argument('-c', '--convert', action="store_true",dest="convert", 
                         help="convert 3mf to stl without tweaking", default=False)
     parser.add_argument('-a', '--angle', action="store", dest="angle", type=int,
-                        default=40,
+                        default=45,
                         help="specify critical angle for overhang demarcation in degrees")
     parser.add_argument('-b', '--bi', action="store_true", dest="bi_algorithmic", default=False,
                         help="using two algorithms for calculation")

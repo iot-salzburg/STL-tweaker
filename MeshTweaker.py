@@ -33,39 +33,41 @@ class Tweak:
     And the relative unprintability of the tweaked object. If this value is
      greater than 15, a support structure is suggested.
         """
-    def __init__(self, mesh, bi_algorithmic, verbose, CA=40, n=[0,0,-1]):
+    def __init__(self, mesh, bi_algorithmic, verbose, CA=45, n=[0,0,-1]):
         
         self.bi_algorithmic = bi_algorithmic
         
         content = self.arrange_mesh(mesh)
+        print("Object has {} facets".format(len(content)))
         arcum_time = dialg_time = lit_time=0
                 
         ## Calculating initial printability
         amin = self.approachfirstvertex(content)
-        bottomA, overhangA, lineL = self.lithograph(content,[0,0,1],amin,CA)
-        liste = [[[0,0,1], bottomA, overhangA, lineL]]
+        bottomA, overhangA, lineL = self.lithograph(content,[0.0,0.0,1.0],amin,CA)
+        liste = [[[0.0,0.0,1.0], bottomA, overhangA, lineL]]
 
 
         ## Searching promising orientations: 
         ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
         arcum_time = time.time()
-        orientatations = self.area_cumulation(content, n)
+        orientations = self.area_cumulation(content, n)
+        print(orientations[2])
         arcum_time = time.time() - arcum_time
         if bi_algorithmic:
             dialg_time = time.time()
-            orientatations += self.egde_plus_vertex(mesh, 12)
+            orientations += self.egde_plus_vertex(mesh, 12)
             dialg_time = time.time() - dialg_time
             
-            orientatations = self.remove_duplicates(orientatations)
+            orientations = self.remove_duplicates(orientations)
         if verbose:
-            print("Examine {} orientations:".format(len(orientatations)))
+            print("Examine {} orientations:".format(len(orientations)))
             print("  %-32s %-18s%-18s%-18s%-18s " %("Area Vector:", 
             "Touching Area:", "Overhang:", "Line length:", "Unprintability:"))
         
         
         # Calculate the printability of each orientation
         lit_time = time.time()
-        for side in orientatations:
+        for side in orientations:
             orientation = [float("{:6f}".format(-i)) for i in side[0]]
             ## vector: sn, cum_A: side[1]
             amin=self.approachvertex(content, orientation)
@@ -220,21 +222,16 @@ Time-stats of algorithm:
         orient = defaultdict(lambda: 0) #list()
         for li in content:       # Cumulate areavectors
             an = li[0]
-            norma = math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2])
+            A = math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2])
             
-            if norma!=0:
-                an = [round(i/norma, 6) for i in an]
-                if an != n:
-                    v = [li[2][0]-li[1][0], li[2][1]-li[1][1], li[2][2]-li[1][2]]
-                    w = [li[2][0]-li[3][0], li[2][1]-li[3][1], li[2][2]-li[3][2]]
-                    x = [v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
-                    A = math.sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2])/2
-                    if A>0.1: # Smaller areas don't impact the result.
-                        orient[tuple(an)] += A
+            if A > 0:
+                an = [round(i/A, 6) for i in an]
+                orient[tuple(an)] += A
+
         time.sleep(0)  # Yield, so other threads get a bit of breathing space.
         sorted_by_area = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
         top_n = sorted_by_area[:best_n]
-        return [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
+        return [[[0.0,0.0,1.0], 0.0]] + [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
        
 
     def egde_plus_vertex(self, mesh, best_n):

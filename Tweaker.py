@@ -1,7 +1,7 @@
 # Python 2.7 and 3.5
 # Author: Christoph Schranz, Salzburg Research
 
-## You can preset the default model in line 40
+## You can preset the default model in line 42
 
 import sys, argparse
 import os
@@ -34,13 +34,13 @@ def getargs():
     args = parser.parse_args()
 
     if args.version:
-        print("Tweaker 0.2.10, (6 September 2016)")
+        print("Tweaker 0.2.11, (22 Oktober 2016)")
         return None        
     if not args.inputfile:
         try:
             curpath = os.path.dirname(os.path.realpath(__file__))
             args.inputfile=curpath + os.sep + "demo_object.stl"
-            #args.inputfile=curpath + os.sep + "death_star.stl"
+            args.inputfile=curpath + os.sep + "death_star.stl"
             #args.inputfile=curpath + os.sep + "cylinder.3mf"
             
         except:
@@ -56,7 +56,7 @@ demo object in verbose and bi-algorithmic mode. Use argument -h for help.
 """)
         args.convert = False
         args.verbose = True
-        args.bi_algorithmic = True            
+        args.bi_algorithmic = False            
     return args
 
 

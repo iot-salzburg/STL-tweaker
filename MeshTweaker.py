@@ -5,9 +5,8 @@ import sys
 import math
 import random
 import time
-import operator
 import itertools
-from collections import defaultdict
+from collections import Counter
 
 class Tweak:
     """ The Tweaker is an auto rotate class for 3D objects.
@@ -219,7 +218,7 @@ Time-stats of algorithm:
         '''Searching best options out of the objects area vector field'''
         if self.bi_algorithmic: best_n = 7
         else: best_n = 5
-        orient = defaultdict(lambda: 0) #list()
+        orient = Counter()
         for li in content:       # Cumulate areavectors
             an = li[0]
             A = math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2])
@@ -229,8 +228,7 @@ Time-stats of algorithm:
                 orient[tuple(an)] += A
 
         time.sleep(0)  # Yield, so other threads get a bit of breathing space.
-        sorted_by_area = sorted(orient.items(), key=operator.itemgetter(1), reverse=True)
-        top_n = sorted_by_area[:best_n]
+        top_n = orient.most_common(best_n)
         return [[[0.0,0.0,1.0], 0.0]] + [[list(el[0]), float("{:2f}".format(el[1]))] for el in top_n]
        
 
@@ -245,14 +243,12 @@ Time-stats of algorithm:
         lst = map(self.calc_random_normal, list(range(vcount))*it)
         lst = filter(lambda x: x is not None, lst)
         
-        orient = defaultdict(lambda: 0)
-        for an in lst:
-            orient[tuple(an)] += 1
-        
         time.sleep(0)  # Yield, so other threads get a bit of breathing space.
-        poss_n = filter(lambda x: x[1]>2, orient.items())
-        sorted_by_rate = sorted(poss_n, key=operator.itemgetter(1), reverse=True)
-        top_n = sorted_by_rate[:best_n]
+        orient = Counter(lst)
+        
+        top_n = orient.most_common(best_n)
+        top_n = filter(lambda x: x[1]>2, top_n)
+
         return [[list(el[0]), el[1]] for el in top_n]
 
     def calc_random_normal(self, i):
@@ -271,9 +267,7 @@ Time-stats of algorithm:
         a=[v[1]*w[2]-v[2]*w[1],v[2]*w[0]-v[0]*w[2],v[0]*w[1]-v[1]*w[0]]
         n = math.sqrt(a[0]*a[0] + a[1]*a[1] + a[2]*a[2])
         if n != 0:
-            return [round(d/n, 6) for d in a]
-        else:
-            return None
+            return tuple([round(d/n, 6) for d in a])
 
 
     def remove_duplicates(self, o):

@@ -37,7 +37,7 @@ class Tweak:
         self.bi_algorithmic = bi_algorithmic
         
         content = self.arrange_mesh(mesh)
-        print("Object has {} facets".format(len(content)))
+        #print("Object has {} facets".format(len(content)))
         arcum_time = dialg_time = lit_time=0
                 
         ## Calculating initial printability
@@ -50,7 +50,7 @@ class Tweak:
         ## Format: [[vector1, gesamtA1],...[vector5, gesamtA5]]: %s", o)
         arcum_time = time.time()
         orientations = self.area_cumulation(content, n)
-        print(orientations[2])
+
         arcum_time = time.time() - arcum_time
         if bi_algorithmic:
             dialg_time = time.time()
@@ -58,6 +58,7 @@ class Tweak:
             dialg_time = time.time() - dialg_time
             
             orientations = self.remove_duplicates(orientations)
+            
         if verbose:
             print("Examine {} orientations:".format(len(orientations)))
             print("  %-32s %-18s%-18s%-18s%-18s " %("Area Vector:", 
@@ -188,7 +189,7 @@ Time-stats of algorithm:
                 a3 = li[3][0]*n[0] +li[3][1]*n[1] +li[3][2]*n[2]
                 an = min([a1,a2,a3])
                 
-                ali = round(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2, 4)
+                ali = float("{:1.4f}".format(abs(li[0][0]*n[0] +li[0][1]*n[1] +li[0][2]*n[2])/2))
                 if touching_height < an:
                     if 0.00001 < math.fabs(a[0]-anti_n[0]) + math.fabs(a[1]-anti_n[1]) + math.fabs(a[2]-anti_n[2]):
                         ali = 0.8 * ali
@@ -224,7 +225,7 @@ Time-stats of algorithm:
             A = math.sqrt(an[0]*an[0] + an[1]*an[1] + an[2]*an[2])
             
             if A > 0:
-                an = [round(i/A, 6) for i in an]
+                an = [float("{:1.6f}".format(i/A, 6)) for i in an]
                 orient[tuple(an)] += A
 
         time.sleep(0)  # Yield, so other threads get a bit of breathing space.

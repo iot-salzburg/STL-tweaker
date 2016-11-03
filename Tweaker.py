@@ -71,7 +71,7 @@ if __name__ == "__main__":
         raise
         
     try:
-        print(args.inputfile)
+        #print(args.inputfile)
         FileHandler = FileHandler.FileHandler()
         objs = FileHandler.loadMesh(args.inputfile)
         

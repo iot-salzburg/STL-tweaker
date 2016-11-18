@@ -5,6 +5,10 @@ Author: Christoph Schranz, 12.01.2016
 
 [STL-tweaker](http://www.salzburgresearch.at/blog/3d-print-positioning/)
 
+
+## Interested in the latest, much faster version?
+[Tweaker 3](https://github.com/ChristophSchranz/Tweaker-3)
+
 ## Quickstart:  
 
 `python Tweaker.py -i yourobject.stl -b -vb`

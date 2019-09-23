@@ -1,7 +1,8 @@
 # STL-Tweaker
 ## The STL-Tweaker is an auto-rotate module which finds the STL or 3mf object's optimal orientation on the printing platform to improve the efficiency of the 3D print.
 
-This version is deprecated, please change to the latest, much faster version?
+This version is deprecated, please change to the latest, much faster version
+
 [Tweaker 3](https://github.com/ChristophSchranz/Tweaker-3)
 
 Author: Christoph Schranz, 12.01.2016 
@@ -9,6 +10,7 @@ Author: Christoph Schranz, 12.01.2016
 [STL-tweaker](http://www.salzburgresearch.at/blog/3d-print-positioning/)
 
 ## Interested in the latest, much faster version?
+
 [Tweaker 3](https://github.com/ChristophSchranz/Tweaker-3)
 
 ## Quickstart:  
